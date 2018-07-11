@@ -1,0 +1,4 @@
+domainName: dev.api.secure.vote
+certificateName: api.secure.vote
+createRoute53Record: true
+endpointType: regional
