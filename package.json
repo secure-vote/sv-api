@@ -1,10 +1,11 @@
 {
   "name": "aws-nodejs-typescript",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Serverless webpack example using Typescript",
   "main": "handler.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docs": "sls downloadDocumentation --outputFileName=swagger-docs.json && pretty-swag -i swagger-docs.json -o docs/docs.html && rm swagger-docs.json"
   },
   "dependencies": {
     "source-map-support": "^0.5.0"
@@ -12,6 +13,8 @@
   "devDependencies": {
     "@types/aws-lambda": "0.0.22",
     "@types/node": "^8.0.57",
+    "pretty-swag": "^0.1.151",
+    "serverless-aws-documentation": "^1.1.0",
     "serverless-domain-manager": "^2.6.0",
     "serverless-webpack": "^4.0.0",
     "ts-loader": "^2.3.7",

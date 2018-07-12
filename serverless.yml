@@ -3,6 +3,7 @@ service:
 
 # Add the serverless-webpack plugin
 plugins:
+  - serverless-aws-documentation
   - serverless-webpack
   - serverless-domain-manager
 
@@ -13,6 +14,8 @@ provider:
 
 custom:
   customDomain: ${file(sls-${self:provider.stage}-domain.yml)}
+  documentation: ${file(sls-documentation.yml):documentation}
+  docFrags: ${file(sls-documentation.yml):docFrags}
 
 functions:
   submitProxyVote:
@@ -21,3 +24,12 @@ functions:
       - http:
           method: post
           path: /sv/light/submitProxyVote
+          # cors: true
+          documentation:
+            summary: publish a signed vote on someones behalf
+            description: submit a signed and packed vote for an arbitrary actor to submit to the chain on your behalf
+            requestModels:
+              "application/json": ProxyVoteInput
+            methodResponses:
+              - ${self:custom.docFrags.GoodTextResp}
+              # - ${self:custom.docFrags.GoodObjResp}

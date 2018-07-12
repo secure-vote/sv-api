@@ -1,0 +1,85 @@
+documentation:
+  api:
+    info:
+      version: ${file(package.json):version}
+      title: SecureVote convenience API
+      description:
+        >
+          An API provided for convenient functions via SecureVote.
+          This includes fee-less voting and other such functions.
+
+          While these operations aren't as trustless as interacting with a chain directly,
+          they do provide very fast verifiability (by checking the txid, etc) and allow for
+          a few features that cannot be done without 3rd parites.
+      termsOfService: https://secure.vote
+      contact:
+        name: Max Kaye
+        url: https://secure.vote
+        email: max@secure.vote
+      license:
+        name: None
+        url: http://secure.vote
+  resources:
+    - path: "sv/light/submitProxyVote"
+      description: "submit a proxy vote here"
+  models:
+    - name: ErrTy
+      contentType: application/json
+      schema:
+        type:
+          - 'string'
+          - 'null'
+    - name: ProxyVoteInput
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          signedVote:
+            type:
+              - string
+              - 'null'
+          democHash:
+            type: string
+          specHash:
+            type: string
+    - name: TextResponse
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          err:
+            type:
+              - 'string'
+              - 'null'
+          val:
+            type: string
+        required:
+          - err
+          - val
+          - ty
+    - name: ObjectResponse
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          err:
+            type:
+              - string
+              - 'null'
+          val:
+            type: object
+          ty:
+            type: string
+        required:
+          - err
+          - val
+          - ty
+docFrags:
+  GoodTextResp:
+    statusCode: 200
+    responseModels:
+      "application/json": TextResponse
+  GoodObjResp:
+    statusCode: 200
+    responseModels:
+      "application/json": ObjectResponse
