@@ -5,7 +5,7 @@
   "main": "handler.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "docs": "sls downloadDocumentation --outputFileName=swagger-docs.json && pretty-swag -i swagger-docs.json -o docs/docs.html && rm swagger-docs.json"
+    "docs": "sls downloadDocumentation --outputFileName=swagger-docs.json && pretty-swag -i swagger-docs.json -o docs/index.html && rm swagger-docs.json"
   },
   "dependencies": {
     "source-map-support": "^0.5.0"
