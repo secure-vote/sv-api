@@ -26,10 +26,11 @@ functions:
           path: /sv/light/submitProxyVote
           # cors: true
           documentation:
-            summary: publish a signed vote on someones behalf
-            description: submit a signed and packed vote for an arbitrary actor to submit to the chain on your behalf
+            summary: Request publication of a signed vote
+            description: Submit a signed and packed vote for an arbitrary actor to submit to the chain on your behalf
             requestModels:
               "application/json": ProxyVoteInput
             methodResponses:
-              - ${self:custom.docFrags.GoodTextResp}
-              # - ${self:custom.docFrags.GoodObjResp}
+              - statusCode: 200
+                responseModels:
+                  "application/json": TxidResponse

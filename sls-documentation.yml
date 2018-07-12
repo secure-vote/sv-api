@@ -3,14 +3,13 @@ documentation:
     info:
       version: ${file(package.json):version}
       title: SecureVote convenience API
-      description:
-        >
-          An API provided for convenient functions via SecureVote.
-          This includes fee-less voting and other such functions.
+      description: >
+        An API provided for convenient functions via SecureVote.
+        This includes fee-less voting and other such functions.
 
-          While these operations aren't as trustless as interacting with a chain directly,
-          they do provide very fast verifiability (by checking the txid, etc) and allow for
-          a few features that cannot be done without 3rd parites.
+        While these operations aren't as trustless as interacting with a chain directly,
+        they do provide very fast verifiability (by checking the txid, etc) and allow for
+        a few features that cannot be done without 3rd parites.
       termsOfService: https://secure.vote
       contact:
         name: Max Kaye
@@ -21,51 +20,81 @@ documentation:
         url: http://secure.vote
   resources:
     - path: "sv/light/submitProxyVote"
-      description: "submit a proxy vote here"
+      description: "Submit a proxy vote here"
   models:
     - name: ErrTy
       contentType: application/json
       schema:
-        type:
-          - 'string'
-          - 'null'
+        type: string
+          # - "null"
+    - name: HexString
+      contentType: 'application/json'
+      schema:
+        type: string
+      example: "0xdeadbeef1337"
+    - name: TXID
+      contentType: 'application/json'
+      schema:
+        type: string
     - name: ProxyVoteInput
+      description: An object composed of the signed vote and metadata about which democracy and ballot it is for.
       contentType: application/json
       schema:
         type: object
         properties:
           signedVote:
-            type:
-              - string
-              - 'null'
+            $ref: '{{model: HexString}}'
           democHash:
-            type: string
-          specHash:
-            type: string
+            $ref: '{{model: HexString}}'
+          ballotId:
+            $ref: '{{model: HexString}}'
+        required:
+          - signedVote
+          - democHash
+          - ballotId
     - name: TextResponse
       contentType: application/json
       schema:
         type: object
         properties:
           err:
-            type:
-              - 'string'
-              - 'null'
+            $ref: '{{model: ErrTy}}'
           val:
             type: string
         required:
           - err
           - val
-          - ty
+    - name: TxidResponse
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          err:
+            $ref: '{{model: ErrTy}}'
+          val:
+            $ref: '{{model: TXID}}'
+        required:
+          - err
+          - val
+    - name: HexResponse
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          err:
+            $ref: '{{model: ErrTy}}'
+          val:
+            $ref: '{{model: HexString}}'
+        required:
+          - err
+          - val
     - name: ObjectResponse
       contentType: application/json
       schema:
         type: object
         properties:
           err:
-            type:
-              - string
-              - 'null'
+            $ref: '{{model: ErrTy}}'
           val:
             type: object
           ty:
