@@ -3,6 +3,7 @@ import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import { mkAsyncH, errResp, toJ, resp200, assertHaveParams, SvHandler } from './helpers';
 import { isArray } from 'util';
 
+
 type ProxyVoteInput = {
     democHash: string,
     extra: string,
