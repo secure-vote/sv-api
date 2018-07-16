@@ -14,7 +14,6 @@ type ProxyVoteInput = {
 const submitProxyVoteInner = async (event, context) => {
     console.log("started", event)
 
-    console.log("started2")
     assertHaveParams(event, ["democHash", "extra", "proxyVoteReq", "ballotId"])
     if (!isArray(event.proxyVoteReq) || event.proxyVoteReq.length != 5) {
         throw Error("proxyVoteReq is invalid.")

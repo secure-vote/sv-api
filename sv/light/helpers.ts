@@ -2,9 +2,9 @@ import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 
 export const toJ = doc => JSON.stringify(doc, null, 2)
 
-export const errResp = (str, extraProps = {}) => ({...extraProps, statusCode: 400, body: {error: str}})
+export const errResp = (str, extraProps = {}) => ({...extraProps, statusCode: 400, body: toJ({error: str})})
 
-export const resp200 = (doc, extraProps = {}) => ({...extraProps, statusCode: 200, body: doc})
+export const resp200 = (doc, extraProps = {}) => ({...extraProps, statusCode: 200, body: toJ(doc)})
 
 
 export const assertHaveParams = (event, params: string[]) => {
