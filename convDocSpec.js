@@ -4,28 +4,39 @@ const toOpenApi = require('json-schema-to-openapi-schema');
 
 const fs = require('fs')
 const R = require('ramda')
+const YAML = require('yaml').default
 
 const main = () => {
+    const origDocs = YAML.parse(fs.readFileSync('./sls-documentation.yml').toString())
     const swaggerSpec = JSON.parse(fs.readFileSync('./swagger-docs.json'))
     const packageJson = JSON.parse(fs.readFileSync('./package.json'))
+
+    console.log(swaggerSpec)
 
     swaggerSpec.definitions = R.map(schema => toOpenApi(schema), swaggerSpec.definitions)
 
     swaggerSpec.info.title = packageJson.docs.title
     swaggerSpec.info.version = packageJson.version
 
-    fixPathParamDesc(swaggerSpec)
+    console.log(origDocs.documentation.models)
+    console.log(swaggerSpec.definitions)
+    R.mapObjIndexed((model, _name) => {
+        const _m = R.compose(R.head, R.filter(({name}) => name == _name))(origDocs.documentation.models)
+        console.log(_name, _m, model)
+        if (_m) {
+            ['pattern', 'format', 'example'].map(i => { if(_m[i]) { model[i] = _m[i] }})
+            console.log(model)
+        }
+    }, swaggerSpec.definitions)
 
-    // ahh some crappy manual additions for the doc generation
-    swaggerSpec.definitions.HexString.pattern = "/^0x([0-9a-fA-F]{2})*$/"
-    swaggerSpec.definitions.HexString.format = "hexString"
 
-    swaggerSpec.definitions.TXID.pattern = "/^0x([0-9a-fA-F]{2})*$/"
-    swaggerSpec.definitions.TXID.minLength = 66
-    swaggerSpec.definitions.TXID.maxLength = 66
-    swaggerSpec.definitions.TXID.format = "hexString"
+    // swaggerSpec.definitions.TXID = swaggerSpec.definitions.TXID || {}
+    // swaggerSpec.definitions.TXID.pattern = "/^0x([0-9a-fA-F]{2})*$/"
+    // swaggerSpec.definitions.TXID.minLength = 66
+    // swaggerSpec.definitions.TXID.maxLength = 66
+    // swaggerSpec.definitions.TXID.format = "hexString"
 
-    swaggerSpec.definitions.ErrTy.nullable = true
+    // swaggerSpec.definitions.ErrTy.nullable = true
 
     // manual additions over
 

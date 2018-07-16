@@ -24,16 +24,16 @@
                 <a href="#path--sv-light-submitProxyVote">/sv/light/submitProxyVote</a>
                 <ul> -->
           <!-- <li> -->
-          <a href="#operation--sv-light-submitProxyVote-post"> Request publication of a signed vote </a>
+          <a href="#operation--sv-light-submitProxyVote-post"> Publish a signed vote </a>
           <!-- </li> -->
           <!-- </ul>
               </section> -->
           <h5>Schema Definitions</h5>
           <a href="#definition-HexString"> HexString </a>
-          <a href="#definition-TXID"> TXID </a>
           <a href="#definition-TxidResponse"> TxidResponse </a>
           <a href="#definition-ErrTy"> ErrTy </a>
           <a href="#definition-ProxyVoteInput"> ProxyVoteInput </a>
+          <a href="#definition-ProxyVoteReq"> ProxyVoteReq </a>
         </nav>
       </div>
       <div id="docs" class="row collapse expanded drawer" data-drawer>
@@ -48,7 +48,18 @@
           <div id="introduction" data-traverse-target="introduction">
             <div class="doc-row">
               <div class="doc-copy">
-                <p>An API provided for convenient functions via SecureVote. This includes fee-less voting and other such functions. While these operations aren&#39;t as trustless as interacting with a chain directly, they do provide very fast verifiability (by checking the txid, etc) and allow for a few features that cannot be done without 3rd parites.</p>
+                <p>An API provided for convenient functions via SecureVote. This includes fee-less voting and other such functions. While these operations aren&#39;t as trustless as interacting with a chain directly, they do provide very fast verifiability (by checking the txid, etc) and allow for a few features that cannot be done without 3rd parites. APIs exist at</p>
+                <ul>
+                  <li>
+                    <a href="https://api.secure.vote">https://api.secure.vote</a>
+                  </li>
+                  <li>
+                    <a href="https://staging.api.secure.vote">https://staging.api.secure.vote</a>
+                  </li>
+                  <li>
+                    <a href="https://dev.api.secure.vote">https://dev.api.secure.vote</a>
+                  </li>
+                </ul>
               </div>
               <div class="doc-examples">
                 <section>
@@ -75,20 +86,13 @@
           <span id="path--sv-light-submitProxyVote"></span>
           <div id="operation--sv-light-submitProxyVote-post" class="operation panel" data-traverse-target="operation--sv-light-submitProxyVote-post">
             <h2 class="operation-title">
-              <span class="operation-summary">Request publication of a signed vote</span>
+              <span class="operation-summary">Publish a signed vote</span>
             </h2>
             <div class="doc-row">
               <div class="doc-copy">
                 <section class="swagger-operation-path">
                   <span class="operation-method">POST</span>
                   <span class="operation-path">/sv/light/submitProxyVote</span>
-                </section>
-              </div>
-            </div>
-            <div class="doc-row">
-              <div class="doc-copy">
-                <section class="swagger-operation-description">
-                  <p>Submit a signed and packed vote for an arbitrary actor to submit to the chain on your behalf</p>
                 </section>
               </div>
             </div>
@@ -105,7 +109,7 @@
                     </div>
                     <div class="prop-value columns small-6">
                       <!-- <div class="swagger-request-description"> -->
-                      <p>An object composed of the signed vote and metadata about which democracy and ballot it is for.</p>
+                      <p>Submit a signed and packed vote for an arbitrary actor to submit to the chain on your behalf</p>
                       <!-- </div> -->
                     </div>
                   </div>
@@ -118,9 +122,16 @@
                   </h5>
                   <h5>Request Example</h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>,
-  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>,
-  <span class="hljs-attr">&quot;signedVote&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>
+  <span class="hljs-attr">&quot;proxyVoteReq&quot;</span>: [
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>
+  ],
+  <span class="hljs-attr">&quot;extra&quot;</span>: <span class="hljs-string">&quot;0x&apos;&quot;</span>,
+  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;0x2bf7e9...&quot;</span>,
+  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;0x00000001f72c...&quot;</span>
 }
 </code></pre>
                   <!-- </div> -->
@@ -144,6 +155,20 @@
                       <p>200 response</p>
                     </div>
                   </div>
+                  <div class="prop-row prop-group">
+                    <div class="prop-name">
+                      <div class="prop-title">400 Bad Request</div>
+                      <div class="prop-ref">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/ErrTy">ErrTy</a>
+                        </span>
+                      </div>
+                      <!-- <span class="swagger-global"></span> <span class="json-schema-reference"><a href=""></a></span> -->
+                    </div>
+                    <div class="prop-value">
+                      <p>400 response</p>
+                    </div>
+                  </div>
                 </section>
               </div>
               <div class="doc-examples">
@@ -155,8 +180,17 @@
                     <span>(200 OK)</span>
                   </h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;val&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>,
-  <span class="hljs-attr">&quot;err&quot;</span>: <span class="hljs-string">&quot;string&quot;</span>
+  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xbf42...54d2 (32 bytes)&quot;</span>
+}
+</code></pre>
+                  <!-- </div> -->
+                </section>
+                <section>
+                  <h5>Response Example
+                    <span>(400 Bad Request)</span>
+                  </h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
+  <span class="hljs-attr">&quot;error&quot;</span>: <span class="hljs-string">&quot;Invalid request data.&quot;</span>
 }
 </code></pre>
                   <!-- </div> -->
@@ -169,27 +203,10 @@
             <h2 class="panel-title">
               <a name="/definitions/HexString"></a>HexString: string
               <!-- <span class="json-property-type">
-              <span class="json-property-type">string</span>  <span class="json-property-format">(hexString)</span>
+              <span class="json-property-type">string</span>  <span class="json-property-format">(0x3b2c...)</span>
               <span class="json-property-range" title="Value limits"></span>
               
               
-              </span> -->
-            </h2>
-            <div class="doc-row">
-              <div class="doc-copy"> </div>
-            </div>
-          </div>
-          <div id="definition-TXID" class="definition panel" data-traverse-target="definition-TXID">
-            <h2 class="panel-title">
-              <a name="/definitions/TXID"></a>TXID: string
-              <!-- <span class="json-property-type">
-              <span class="json-property-type">string</span>  <span class="json-property-format">(hexString)</span>
-              <span class="json-property-range" title="Value limits"></span>
-              
-              
-                <span class="json-property-range" title="String length limits">
-                      (66 chars)
-                </span>
               </span> -->
             </h2>
             <div class="doc-row">
@@ -198,7 +215,31 @@
           </div>
           <div id="definition-TxidResponse" class="definition panel" data-traverse-target="definition-TxidResponse">
             <h2 class="panel-title">
-              <a name="/definitions/TxidResponse"></a>TxidResponse: object
+              <a name="/definitions/TxidResponse"></a>TxidResponse:
+              <!-- <span class="json-property-type">
+              <span class="json-property-type">object</span>
+              <span class="json-property-range" title="Value limits"></span>
+              
+              
+              </span> -->
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy"> </div>
+              <div class="doc-examples">
+                <section>
+                  <h5>Example</h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
+  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xbf42...54d2 (32 bytes)&quot;</span>
+}
+</code></pre>
+                  <!-- </div> -->
+                </section>
+              </div>
+            </div>
+          </div>
+          <div id="definition-ErrTy" class="definition panel" data-traverse-target="definition-ErrTy">
+            <h2 class="panel-title">
+              <a name="/definitions/ErrTy"></a>ErrTy: object
               <!-- <span class="json-property-type">
               <span class="json-property-type">object</span>
               <span class="json-property-range" title="Value limits"></span>
@@ -210,25 +251,10 @@
               <div class="doc-copy">
                 <section class="json-schema-properties">
                   <dl>
-                    <dt data-property-name="val">
-                      <span class="json-property-name">val:</span>
-                      <span class="json-property-type">
-                        <span class="">
-                          <a class="json-schema-ref" href="#/definitions/TXID">TXID</a>
-                        </span>
-                      </span>
+                    <dt data-property-name="error">
+                      <span class="json-property-name">error:</span>
+                      <span class="json-property-type">string</span>
                       <span class="json-property-range" title="Value limits"></span>
-                      <span class="json-property-required"></span>
-                    </dt>
-                    <dt data-property-name="err">
-                      <span class="json-property-name">err:</span>
-                      <span class="json-property-type">
-                        <span class="">
-                          <a class="json-schema-ref" href="#/definitions/ErrTy">ErrTy</a>
-                        </span>
-                      </span>
-                      <span class="json-property-range" title="Value limits"></span>
-                      <span class="json-property-required"></span>
                     </dt>
                   </dl>
                 </section>
@@ -237,27 +263,12 @@
                 <section>
                   <h5>Example</h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;val&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>,
-  <span class="hljs-attr">&quot;err&quot;</span>: <span class="hljs-string">&quot;string&quot;</span>
+  <span class="hljs-attr">&quot;error&quot;</span>: <span class="hljs-string">&quot;Invalid request data.&quot;</span>
 }
 </code></pre>
                   <!-- </div> -->
                 </section>
               </div>
-            </div>
-          </div>
-          <div id="definition-ErrTy" class="definition panel" data-traverse-target="definition-ErrTy">
-            <h2 class="panel-title">
-              <a name="/definitions/ErrTy"></a>ErrTy: string
-              <!-- <span class="json-property-type">
-              <span class="json-property-type">string</span>
-              <span class="json-property-range" title="Value limits"></span>
-              
-              
-              </span> -->
-            </h2>
-            <div class="doc-row">
-              <div class="doc-copy"> </div>
             </div>
           </div>
           <div id="definition-ProxyVoteInput" class="definition panel" data-traverse-target="definition-ProxyVoteInput">
@@ -287,8 +298,8 @@
                       <span class="json-property-range" title="Value limits"></span>
                       <span class="json-property-required"></span>
                     </dt>
-                    <dt data-property-name="ballotId">
-                      <span class="json-property-name">ballotId:</span>
+                    <dt data-property-name="extra">
+                      <span class="json-property-name">extra:</span>
                       <span class="json-property-type">
                         <span class="">
                           <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
@@ -297,8 +308,18 @@
                       <span class="json-property-range" title="Value limits"></span>
                       <span class="json-property-required"></span>
                     </dt>
-                    <dt data-property-name="signedVote">
-                      <span class="json-property-name">signedVote:</span>
+                    <dt data-property-name="proxyVoteReq">
+                      <span class="json-property-name">proxyVoteReq:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/ProxyVoteReq">ProxyVoteReq</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                      <span class="json-property-required"></span>
+                    </dt>
+                    <dt data-property-name="ballotId">
+                      <span class="json-property-name">ballotId:</span>
                       <span class="json-property-type">
                         <span class="">
                           <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
@@ -314,10 +335,49 @@
                 <section>
                   <h5>Example</h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>,
-  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>,
-  <span class="hljs-attr">&quot;signedVote&quot;</span>: <span class="hljs-string">&quot;string (hexString)&quot;</span>
+  <span class="hljs-attr">&quot;proxyVoteReq&quot;</span>: [
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>,
+    <span class="hljs-string">&quot;0x01..&quot;</span>
+  ],
+  <span class="hljs-attr">&quot;extra&quot;</span>: <span class="hljs-string">&quot;0x&apos;&quot;</span>,
+  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;0x2bf7e9...&quot;</span>,
+  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;0x00000001f72c...&quot;</span>
 }
+</code></pre>
+                  <!-- </div> -->
+                </section>
+              </div>
+            </div>
+          </div>
+          <div id="definition-ProxyVoteReq" class="definition panel" data-traverse-target="definition-ProxyVoteReq">
+            <h2 class="panel-title">
+              <a name="/definitions/ProxyVoteReq"></a>ProxyVoteReq: array
+              <!-- <span class="json-property-type">
+              <span class="json-property-type">array</span>
+              <span class="json-property-range" title="Value limits"></span>
+              
+              
+              </span> -->
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="json-schema-description">
+                  <p>A tuple5 corresponding to the <code>proxyReq</code> object expected for proxy votes.</p>
+                </section>
+              </div>
+              <div class="doc-examples">
+                <section>
+                  <h5>Example</h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">[
+  <span class="hljs-string">&quot;&apos;0x0102..1f20&apos; (`r` param)&quot;</span>,
+  <span class="hljs-string">&quot;&apos;0x0102..1f20&apos; (`s` param)&quot;</span>,
+  <span class="hljs-string">&quot;&apos;0x0102..1f20&apos; (`v` param in byte1, 27 unused bytes, `sequenceNumber` last 4 bytes)&quot;</span>,
+  <span class="hljs-string">&quot;&apos;0x0102..1f20&apos; (ballotId as hex)&quot;</span>,
+  <span class="hljs-string">&quot;&apos;0x0102..1f20&apos; (voteData as hex)&quot;</span>
+]
 </code></pre>
                   <!-- </div> -->
                 </section>

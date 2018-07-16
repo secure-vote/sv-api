@@ -8,7 +8,7 @@
   "main": "handler.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "docs": "sls downloadDocumentation --outputFileName=swagger-docs.json && ./convDocSpec.js && spectacle -t docs swagger-docs.json && true # rm swagger-docs.json",
+    "docs": "sls downloadDocumentation --outputFileName=swagger-docs.json && ./convDocSpec.js && spectacle -t docs swagger-docs.json # bootprint openapi ./swagger-docs.json docs",
     "deploy": "sls deploy --stage dev && npm run docs"
   },
   "dependencies": {
@@ -21,11 +21,13 @@
     "json-schema-to-openapi-schema": "^0.2.0",
     "serverless-aws-documentation": "^1.1.0",
     "serverless-domain-manager": "^2.6.0",
+    "serverless-openapi-documentation": "^0.4.0",
     "serverless-webpack": "^4.0.0",
-    "spectacle-docs": "^1.0.5",
+    "spectacle-docs": "git+https://github.com/secure-vote/spectacle.git",
     "ts-loader": "^2.3.7",
     "typescript": "^2.5.2",
-    "webpack": "^3.6.0"
+    "webpack": "^3.6.0",
+    "yaml": "^1.0.0-rc.7"
   },
   "author": "The serverless webpack authors (https://github.com/elastic-coders/serverless-webpack)",
   "license": "MIT"

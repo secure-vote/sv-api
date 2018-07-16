@@ -7,3 +7,7 @@ jspm_packages
 
 # Webpack directories
 .webpack
+
+swagger-docs.json
+
+.DS_Store

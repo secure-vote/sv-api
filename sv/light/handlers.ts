@@ -1,12 +1,25 @@
+import { isObject } from 'ramda'
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
-import { mkAsync } from './helpers';
+import { mkAsyncH, errResp, toJ, resp200, assertHaveParams, SvHandler } from './helpers';
+import { isArray } from 'util';
 
-export const submitProxyVote: Handler = (event: APIGatewayEvent, context: Context, cb: Callback) => {
-    mkAsync(async () => {
-
-        return {
-            statusCode: 200,
-            body: JSON.stringify({message: 'hi', event, context})
-        }
-    }, cb)
+type ProxyVoteInput = {
+    democHash: string,
+    extra: string,
+    proxyVoteReq: string[],
+    ballotId: string
 }
+
+
+const submitProxyVoteInner = async (event, context) => {
+    console.log("started", event)
+
+    console.log("started2")
+    assertHaveParams(event, ["democHash", "extra", "proxyVoteReq", "ballotId"])
+    if (!isArray(event.proxyVoteReq) || event.proxyVoteReq.length != 5) {
+        throw Error("proxyVoteReq is invalid.")
+    }
+
+    return resp200(event)
+}
+export const submitProxyVote: Handler = mkAsyncH<ProxyVoteInput>(submitProxyVoteInner)

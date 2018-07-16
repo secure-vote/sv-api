@@ -10,6 +10,15 @@ documentation:
         While these operations aren't as trustless as interacting with a chain directly,
         they do provide very fast verifiability (by checking the txid, etc) and allow for
         a few features that cannot be done without 3rd parites.
+
+        APIs exist at
+
+        * https://api.secure.vote
+
+        * https://staging.api.secure.vote
+
+        * https://dev.api.secure.vote
+
       termsOfService: https://secure.vote
       contact:
         name: Max Kaye
@@ -18,91 +27,116 @@ documentation:
       license:
         name: None
         url: http://secure.vote
+
   resources:
     - path: "sv/light/submitProxyVote"
       description: "Submit a proxy vote here"
+
   models:
     - name: ErrTy
       contentType: application/json
       schema:
-        type: string
-          # - "null"
+        type: object
+        properties:
+          error:
+            type: string
+      example:
+        error: "Invalid request data."
+
     - name: HexString
       contentType: 'application/json'
       schema:
         type: string
       example: "0xdeadbeef1337"
-    - name: TXID
-      contentType: 'application/json'
+      pattern: pattern = "/^0x([0-9a-fA-F]{2})*$/"
+      format: "0x3b2c..."
+
+    - name: ProxyVoteReq
+      description: >
+        A tuple5 corresponding to the `proxyReq` object expected for proxy votes.
+      contentType: "application/json"
       schema:
-        type: string
+        type: array
+        items:
+          - $ref: '{{model: HexString}}'
+            description: bytes32; The `r` param for an eth signature
+          - $ref: '{{model: HexString}}'
+            description: bytes32; The `s` param for an eth signature
+          - $ref: '{{model: HexString}}'
+            description: 'bytes32; Packed data. First byte is the `v` param for an eth sig, then 27 unallocated bytes, and the last 4 bytes are the sequence number'
+          - $ref: '{{model: HexString}}'
+            description: 'bytes32; ballotId as hex'
+          - $ref: '{{model: HexString}}'
+            description: 'bytes32; voteData as hex'
+        minItems: 5
+        maxItems: 5
+      example:
+        - "'0x0102..1f20' (`r` param)"
+        - "'0x0102..1f20' (`s` param)"
+        - "'0x0102..1f20' (`v` param in byte1, 27 unused bytes, `sequenceNumber` last 4 bytes)"
+        - "'0x0102..1f20' (ballotId as hex)"
+        - "'0x0102..1f20' (voteData as hex)"
+
     - name: ProxyVoteInput
       description: An object composed of the signed vote and metadata about which democracy and ballot it is for.
       contentType: application/json
       schema:
         type: object
         properties:
-          signedVote:
+          proxyVoteReq:
+            $ref: '{{model: ProxyVoteReq}}'
+          extra:
             $ref: '{{model: HexString}}'
           democHash:
             $ref: '{{model: HexString}}'
           ballotId:
             $ref: '{{model: HexString}}'
         required:
-          - signedVote
+          - proxyVoteReq
           - democHash
           - ballotId
+          - extra
+      example:
+        proxyVoteReq: ["0x01..", "0x01..", "0x01..", "0x01..", "0x01.."]
+        extra: 0x'
+        democHash: '0x2bf7e9...'
+        ballotId: '0x00000001f72c...'
+
     - name: TextResponse
       contentType: application/json
       schema:
-        type: object
-        properties:
-          err:
-            $ref: '{{model: ErrTy}}'
-          val:
-            type: string
-        required:
-          - err
-          - val
+        type: string
+
     - name: TxidResponse
       contentType: application/json
       schema:
-        type: object
-        properties:
-          err:
-            $ref: '{{model: ErrTy}}'
-          val:
-            $ref: '{{model: TXID}}'
-        required:
-          - err
-          - val
+        oneOf:
+          - type: object
+            properties:
+              txid:
+                $ref: '{{model: HexString}}'
+          - $ref: '{{model: ErrTy}}'
+      example:
+        txid: "0xbf42...54d2 (32 bytes)"
+
     - name: HexResponse
       contentType: application/json
       schema:
-        type: object
-        properties:
-          err:
-            $ref: '{{model: ErrTy}}'
-          val:
-            $ref: '{{model: HexString}}'
-        required:
-          - err
-          - val
+        $ref: '{{model: HexString}}'
+
     - name: ObjectResponse
       contentType: application/json
       schema:
         type: object
         properties:
-          err:
-            $ref: '{{model: ErrTy}}'
           val:
             type: object
           ty:
             type: string
         required:
-          - err
           - val
           - ty
+
 docFrags:
   GoodTextResp:
     statusCode: 200
@@ -112,3 +146,7 @@ docFrags:
     statusCode: 200
     responseModels:
       "application/json": ObjectResponse
+  ErrResp:
+    statusCode: 400
+    responseModels:
+      "application/json": ErrTy
