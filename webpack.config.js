@@ -1,5 +1,7 @@
 const path = require('path');
 const slsw = require('serverless-webpack');
+const webpack = require('webpack')
+// const nodeExternals = require('webpack-node-externals');
 
 const entries = {};
 
@@ -29,5 +31,12 @@ module.exports = {
     loaders: [
       { test: /\.ts(x?)$/, loader: 'ts-loader' },
     ],
+    noParse: [/^websocket$/]
   },
+  plugins: [
+    new webpack.IgnorePlugin(/scrypt/),
+    new webpack.IgnorePlugin(/electron/)
+  ],
+  externals: ['websocket']
+  // externals: [ nodeExternals() ],
 };

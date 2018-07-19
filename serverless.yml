@@ -12,6 +12,7 @@ provider:
   name: aws
   runtime: nodejs8.10
   region: ap-southeast-2
+  stage: ${opt:stage, 'dev'}
 
 custom:
   customDomain: ${file(sls-${self:provider.stage}-domain.yml)}
@@ -25,7 +26,7 @@ functions:
       - http:
           method: post
           path: /sv/light/submitProxyVote
-          # cors: true
+          cors: true
           documentation:
             summary: Publish a signed vote
             requestBody:
@@ -35,5 +36,5 @@ functions:
             methodResponses:
               - statusCode: 200
                 responseModels:
-                  "application/json": TxidResponse
+                  "application/json": SubmitProxyVoteResp
               - ${self:custom.doc.ErrResp}

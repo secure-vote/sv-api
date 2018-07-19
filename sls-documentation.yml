@@ -50,6 +50,16 @@ documentation:
       example: "0xdeadbeef1337"
       pattern: pattern = "/^0x([0-9a-fA-F]{2})*$/"
       format: "0x3b2c..."
+      description: A hex string in Ethereum format ('0x010203aabbcc...')
+
+    - name: EthAddress
+      contentType: 'application/json'
+      schema:
+        type: string
+      example: "0xD386456eb1Af15A5918E7ECC57142bB2634bF9B9"
+      pattern: pattern = "/^0x([0-9a-fA-F]{2})*$/"
+      format: "ethHexAddress"
+      description: An Ethereum address
 
     - name: ProxyVoteReq
       description: >
@@ -83,7 +93,7 @@ documentation:
       schema:
         type: object
         properties:
-          proxyVoteReq:
+          proxyReq:
             $ref: '{{model: ProxyVoteReq}}'
           extra:
             $ref: '{{model: HexString}}'
@@ -92,15 +102,30 @@ documentation:
           ballotId:
             $ref: '{{model: HexString}}'
         required:
-          - proxyVoteReq
+          - proxyReq
           - democHash
           - ballotId
           - extra
       example:
-        proxyVoteReq: ["0x01..", "0x01..", "0x01..", "0x01..", "0x01.."]
-        extra: 0x'
-        democHash: '0x2bf7e9...'
-        ballotId: '0x00000001f72c...'
+        proxyReq:
+          - "0x32a28ff5895d200d3a518cc55a6cfdabe18623a29e8fb100a0b29b42a2111687"
+          - "0x3d8c990c44939c2a619db686542614a5410ee48a217e7e5b0ecec4c1fb50865f"
+          - "0x1c00000000000000000000000000000000000000000000000000000000000001"
+          - "0x0000000000000000053970000000000000000000000000000000000000000000"
+          - "0x4000000000000000000000000000000000000000000000000000000000000000"
+        extra: 0x
+        democHash: '0x40e135c54ddfdc99585d5d8e723906ea75e8447ba731ed0679135c084ac8278f'
+        ballotId: '0x0000000000000000053970000000000000000000000000000000000000000000'
+
+    - name: SubmitProxyVoteResp
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          txid:
+            $ref: '{{model: HexString}}'
+          address:
+            $ref: '{{model: EthAddress}}'
 
     - name: TextResponse
       contentType: application/json

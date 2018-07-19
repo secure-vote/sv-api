@@ -14,11 +14,12 @@
   "dependencies": {
     "ramda": "^0.25.0",
     "source-map-support": "^0.5.0",
-    "sv-lib": "^0.1.9"
+    "sv-lib": "git+https://github.com/secure-vote/sv-lib.git"
   },
   "devDependencies": {
     "@types/aws-lambda": "0.0.22",
     "@types/node": "^8.0.57",
+    "@types/ramda": "^0.25.35",
     "json-schema-to-openapi-schema": "^0.2.0",
     "serverless-aws-documentation": "^1.1.0",
     "serverless-domain-manager": "^2.6.0",
@@ -28,6 +29,7 @@
     "ts-loader": "^2.3.7",
     "typescript": "^2.5.2",
     "webpack": "^3.6.0",
+    "webpack-node-externals": "^1.7.2",
     "yaml": "^1.0.0-rc.7"
   },
   "author": "The serverless webpack authors (https://github.com/elastic-coders/serverless-webpack)",

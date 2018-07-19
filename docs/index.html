@@ -26,11 +26,15 @@
           <!-- <li> -->
           <a href="#operation--sv-light-submitProxyVote-post"> Publish a signed vote </a>
           <!-- </li> -->
+          <!-- <li> -->
+          <a href="#operation--sv-light-submitProxyVote-options"> OPTIONS /sv/light/submitProxyVote </a>
+          <!-- </li> -->
           <!-- </ul>
               </section> -->
           <h5>Schema Definitions</h5>
+          <a href="#definition-EthAddress"> EthAddress </a>
           <a href="#definition-HexString"> HexString </a>
-          <a href="#definition-TxidResponse"> TxidResponse </a>
+          <a href="#definition-SubmitProxyVoteResp"> SubmitProxyVoteResp </a>
           <a href="#definition-ErrTy"> ErrTy </a>
           <a href="#definition-ProxyVoteInput"> ProxyVoteInput </a>
           <a href="#definition-ProxyVoteReq"> ProxyVoteReq </a>
@@ -122,16 +126,16 @@
                   </h5>
                   <h5>Request Example</h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;proxyVoteReq&quot;</span>: [
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>
+  <span class="hljs-attr">&quot;proxyReq&quot;</span>: [
+    <span class="hljs-string">&quot;0x32a28ff5895d200d3a518cc55a6cfdabe18623a29e8fb100a0b29b42a2111687&quot;</span>,
+    <span class="hljs-string">&quot;0x3d8c990c44939c2a619db686542614a5410ee48a217e7e5b0ecec4c1fb50865f&quot;</span>,
+    <span class="hljs-string">&quot;0x1c00000000000000000000000000000000000000000000000000000000000001&quot;</span>,
+    <span class="hljs-string">&quot;0x0000000000000000053970000000000000000000000000000000000000000000&quot;</span>,
+    <span class="hljs-string">&quot;0x4000000000000000000000000000000000000000000000000000000000000000&quot;</span>
   ],
-  <span class="hljs-attr">&quot;extra&quot;</span>: <span class="hljs-string">&quot;0x&apos;&quot;</span>,
-  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;0x2bf7e9...&quot;</span>,
-  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;0x00000001f72c...&quot;</span>
+  <span class="hljs-attr">&quot;extra&quot;</span>: <span class="hljs-string">&quot;0x&quot;</span>,
+  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;0x40e135c54ddfdc99585d5d8e723906ea75e8447ba731ed0679135c084ac8278f&quot;</span>,
+  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;0x0000000000000000053970000000000000000000000000000000000000000000&quot;</span>
 }
 </code></pre>
                   <!-- </div> -->
@@ -146,7 +150,7 @@
                       <div class="prop-title">200 OK</div>
                       <div class="prop-ref">
                         <span class="">
-                          <a class="json-schema-ref" href="#/definitions/TxidResponse">TxidResponse</a>
+                          <a class="json-schema-ref" href="#/definitions/SubmitProxyVoteResp">SubmitProxyVoteResp</a>
                         </span>
                       </div>
                       <!-- <span class="swagger-global"></span> <span class="json-schema-reference"><a href=""></a></span> -->
@@ -180,7 +184,8 @@
                     <span>(200 OK)</span>
                   </h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xbf42...54d2 (32 bytes)&quot;</span>
+  <span class="hljs-attr">&quot;address&quot;</span>: <span class="hljs-string">&quot;0xD386456eb1Af15A5918E7ECC57142bB2634bF9B9&quot;</span>,
+  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xdeadbeef1337&quot;</span>
 }
 </code></pre>
                   <!-- </div> -->
@@ -198,7 +203,114 @@
               </div>
             </div>
           </div>
+          <div id="operation--sv-light-submitProxyVote-options" class="operation panel" data-traverse-target="operation--sv-light-submitProxyVote-options">
+            <h2 class="operation-title">
+              <span class="operation-name">
+                <span class="operation-name">OPTIONS</span>
+                <span class="operation-path">/sv/light/submitProxyVote</span>
+              </span>
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy"> </div>
+              <div class="doc-examples"></div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="swagger-responses">
+                  <div class="prop-row prop-group">
+                    <div class="prop-name">
+                      <div class="prop-title">200 OK</div>
+                    </div>
+                    <div class="prop-value">
+                      <p>200 response</p>
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div class="doc-examples">
+                <h5>Response Content-Types:
+                  <span>application/json</span>
+                </h5>
+                <section>
+                  <h5>Response Headers
+                    <span>(200 OK)</span>
+                  </h5>
+                  <section class="swagger-response-headers">
+                    <table class="table">
+                      <thead>
+                        <tr>
+                          <th class="swagger-response-header-name"></th>
+                          <th class="swagger-response-header-description"></th>
+                          <th class="swagger-response-header-data-type"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="swagger-response-header-Access-Control-Allow-Origin">
+                          <td> Access-Control-Allow-Origin
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                        <tr class="swagger-response-header-Access-Control-Allow-Methods">
+                          <td> Access-Control-Allow-Methods
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                        <tr class="swagger-response-header-Access-Control-Allow-Credentials">
+                          <td> Access-Control-Allow-Credentials
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                        <tr class="swagger-response-header-Access-Control-Allow-Headers">
+                          <td> Access-Control-Allow-Headers
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </section>
+                </section>
+              </div>
+            </div>
+          </div>
           <h1>Schema Definitions</h1>
+          <div id="definition-EthAddress" class="definition panel" data-traverse-target="definition-EthAddress">
+            <h2 class="panel-title">
+              <a name="/definitions/EthAddress"></a>EthAddress: string
+              <!-- <span class="json-property-type">
+              <span class="json-property-type">string</span>  <span class="json-property-format">(ethHexAddress)</span>
+              <span class="json-property-range" title="Value limits"></span>
+              
+              
+              </span> -->
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="json-schema-description">
+                  <p>An Ethereum address</p>
+                </section>
+              </div>
+            </div>
+          </div>
           <div id="definition-HexString" class="definition panel" data-traverse-target="definition-HexString">
             <h2 class="panel-title">
               <a name="/definitions/HexString"></a>HexString: string
@@ -210,12 +322,16 @@
               </span> -->
             </h2>
             <div class="doc-row">
-              <div class="doc-copy"> </div>
+              <div class="doc-copy">
+                <section class="json-schema-description">
+                  <p>A hex string in Ethereum format (&#39;0x010203aabbcc...&#39;)</p>
+                </section>
+              </div>
             </div>
           </div>
-          <div id="definition-TxidResponse" class="definition panel" data-traverse-target="definition-TxidResponse">
+          <div id="definition-SubmitProxyVoteResp" class="definition panel" data-traverse-target="definition-SubmitProxyVoteResp">
             <h2 class="panel-title">
-              <a name="/definitions/TxidResponse"></a>TxidResponse:
+              <a name="/definitions/SubmitProxyVoteResp"></a>SubmitProxyVoteResp: object
               <!-- <span class="json-property-type">
               <span class="json-property-type">object</span>
               <span class="json-property-range" title="Value limits"></span>
@@ -224,12 +340,36 @@
               </span> -->
             </h2>
             <div class="doc-row">
-              <div class="doc-copy"> </div>
+              <div class="doc-copy">
+                <section class="json-schema-properties">
+                  <dl>
+                    <dt data-property-name="address">
+                      <span class="json-property-name">address:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/EthAddress">EthAddress</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                    </dt>
+                    <dt data-property-name="txid">
+                      <span class="json-property-name">txid:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                    </dt>
+                  </dl>
+                </section>
+              </div>
               <div class="doc-examples">
                 <section>
                   <h5>Example</h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xbf42...54d2 (32 bytes)&quot;</span>
+  <span class="hljs-attr">&quot;address&quot;</span>: <span class="hljs-string">&quot;0xD386456eb1Af15A5918E7ECC57142bB2634bF9B9&quot;</span>,
+  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xdeadbeef1337&quot;</span>
 }
 </code></pre>
                   <!-- </div> -->
@@ -298,21 +438,21 @@
                       <span class="json-property-range" title="Value limits"></span>
                       <span class="json-property-required"></span>
                     </dt>
-                    <dt data-property-name="extra">
-                      <span class="json-property-name">extra:</span>
+                    <dt data-property-name="proxyReq">
+                      <span class="json-property-name">proxyReq:</span>
                       <span class="json-property-type">
                         <span class="">
-                          <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
+                          <a class="json-schema-ref" href="#/definitions/ProxyVoteReq">ProxyVoteReq</a>
                         </span>
                       </span>
                       <span class="json-property-range" title="Value limits"></span>
                       <span class="json-property-required"></span>
                     </dt>
-                    <dt data-property-name="proxyVoteReq">
-                      <span class="json-property-name">proxyVoteReq:</span>
+                    <dt data-property-name="extra">
+                      <span class="json-property-name">extra:</span>
                       <span class="json-property-type">
                         <span class="">
-                          <a class="json-schema-ref" href="#/definitions/ProxyVoteReq">ProxyVoteReq</a>
+                          <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
                         </span>
                       </span>
                       <span class="json-property-range" title="Value limits"></span>
@@ -335,16 +475,16 @@
                 <section>
                   <h5>Example</h5>
                   <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
-  <span class="hljs-attr">&quot;proxyVoteReq&quot;</span>: [
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>,
-    <span class="hljs-string">&quot;0x01..&quot;</span>
+  <span class="hljs-attr">&quot;proxyReq&quot;</span>: [
+    <span class="hljs-string">&quot;0x32a28ff5895d200d3a518cc55a6cfdabe18623a29e8fb100a0b29b42a2111687&quot;</span>,
+    <span class="hljs-string">&quot;0x3d8c990c44939c2a619db686542614a5410ee48a217e7e5b0ecec4c1fb50865f&quot;</span>,
+    <span class="hljs-string">&quot;0x1c00000000000000000000000000000000000000000000000000000000000001&quot;</span>,
+    <span class="hljs-string">&quot;0x0000000000000000053970000000000000000000000000000000000000000000&quot;</span>,
+    <span class="hljs-string">&quot;0x4000000000000000000000000000000000000000000000000000000000000000&quot;</span>
   ],
-  <span class="hljs-attr">&quot;extra&quot;</span>: <span class="hljs-string">&quot;0x&apos;&quot;</span>,
-  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;0x2bf7e9...&quot;</span>,
-  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;0x00000001f72c...&quot;</span>
+  <span class="hljs-attr">&quot;extra&quot;</span>: <span class="hljs-string">&quot;0x&quot;</span>,
+  <span class="hljs-attr">&quot;democHash&quot;</span>: <span class="hljs-string">&quot;0x40e135c54ddfdc99585d5d8e723906ea75e8447ba731ed0679135c084ac8278f&quot;</span>,
+  <span class="hljs-attr">&quot;ballotId&quot;</span>: <span class="hljs-string">&quot;0x0000000000000000053970000000000000000000000000000000000000000000&quot;</span>
 }
 </code></pre>
                   <!-- </div> -->

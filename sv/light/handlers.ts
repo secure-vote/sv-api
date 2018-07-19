@@ -1,25 +1,32 @@
-import { isObject } from 'ramda'
+console.log('at least this shows up right?')
+
+// import { isObject } from 'ramda'
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import { mkAsyncH, errResp, toJ, resp200, assertHaveParams, SvHandler } from './helpers';
 import { isArray } from 'util';
 
+console.log('loaded stuff that used to work')
+
+import { verifySignedBallotForProxy } from 'sv-lib/dist/ballotBox'
+
+console.log('loaded all')
 
 type ProxyVoteInput = {
     democHash: string,
     extra: string,
-    proxyVoteReq: string[],
+    proxyReq: [string, string, string, string, string],
     ballotId: string
 }
 
 
-const submitProxyVoteInner = async (event, context) => {
-    console.log("started", event)
-
-    assertHaveParams(event, ["democHash", "extra", "proxyVoteReq", "ballotId"])
-    if (!isArray(event.proxyVoteReq) || event.proxyVoteReq.length != 5) {
-        throw Error("proxyVoteReq is invalid.")
+const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
+    assertHaveParams(event, ["democHash", "extra", "proxyReq", "ballotId"])
+    if (!isArray(event.proxyReq) || event.proxyReq.length != 5) {
+        throw Error("proxyReq is invalid.")
     }
 
-    return resp200(event)
+    const {verified, address} = verifySignedBallotForProxy(event)
+
+    return resp200({txid: "0x-not-done-yet", address})
 }
 export const submitProxyVote: Handler = mkAsyncH<ProxyVoteInput>(submitProxyVoteInner)
