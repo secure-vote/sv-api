@@ -21,6 +21,17 @@
           <a href="#introduction">Introduction</a>
           <h5>Paths</h5>
           <!-- <section>
+                <a href="#path--sv-light-submitEd25519Delegation">/sv/light/submitEd25519Delegation</a>
+                <ul> -->
+          <!-- <li> -->
+          <a href="#operation--sv-light-submitEd25519Delegation-post"> Publish an Ed25519 -&gt; Eth delegation (e.g. for onboarding voters from a stellar chain) </a>
+          <!-- </li> -->
+          <!-- <li> -->
+          <a href="#operation--sv-light-submitEd25519Delegation-options"> OPTIONS /sv/light/submitEd25519Delegation </a>
+          <!-- </li> -->
+          <!-- </ul>
+              </section> -->
+          <!-- <section>
                 <a href="#path--sv-light-submitProxyVote">/sv/light/submitProxyVote</a>
                 <ul> -->
           <!-- <li> -->
@@ -33,6 +44,8 @@
               </section> -->
           <h5>Schema Definitions</h5>
           <a href="#definition-EthAddress"> EthAddress </a>
+          <a href="#definition-Ed25519DelegationReq"> Ed25519DelegationReq </a>
+          <a href="#definition-Ed25519DelegationResp"> Ed25519DelegationResp </a>
           <a href="#definition-HexString"> HexString </a>
           <a href="#definition-SubmitProxyVoteResp"> SubmitProxyVoteResp </a>
           <a href="#definition-ErrTy"> ErrTy </a>
@@ -87,6 +100,205 @@
             </div>
           </div>
           <h1>Paths</h1>
+          <span id="path--sv-light-submitEd25519Delegation"></span>
+          <div id="operation--sv-light-submitEd25519Delegation-post" class="operation panel" data-traverse-target="operation--sv-light-submitEd25519Delegation-post">
+            <h2 class="operation-title">
+              <span class="operation-summary">Publish an Ed25519 -&gt; Eth delegation (e.g. for onboarding voters from a stellar chain)</span>
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="swagger-operation-path">
+                  <span class="operation-method">POST</span>
+                  <span class="operation-path">/sv/light/submitEd25519Delegation</span>
+                </section>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="swagger-request-body">
+                  <div class="prop-row">
+                    <div class="prop-name">
+                      <div class="swagger-request-model">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/Ed25519DelegationReq">Ed25519DelegationReq</a>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="prop-value columns small-6">
+                      <!-- <div class="swagger-request-description"> -->
+                      <p>Submit a signed and packed ed25519 delegation for an arbitrary actor to submit to the chain on your behalf</p>
+                      <!-- </div> -->
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div class="doc-examples">
+                <section>
+                  <h5>Request Content-Types:
+                    <span>application/json</span>
+                  </h5>
+                  <h5>Request Example</h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
+  <span class="hljs-attr">&quot;signature&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+  <span class="hljs-attr">&quot;publickey&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+  <span class="hljs-attr">&quot;packed&quot;</span>: <span class="hljs-string">&quot;&quot;</span>
+}
+</code></pre>
+                  <!-- </div> -->
+                </section>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="swagger-responses">
+                  <div class="prop-row prop-group">
+                    <div class="prop-name">
+                      <div class="prop-title">200 OK</div>
+                      <div class="prop-ref">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/Ed25519DelegationResp">Ed25519DelegationResp</a>
+                        </span>
+                      </div>
+                      <!-- <span class="swagger-global"></span> <span class="json-schema-reference"><a href=""></a></span> -->
+                    </div>
+                    <div class="prop-value">
+                      <p>200 response</p>
+                    </div>
+                  </div>
+                  <div class="prop-row prop-group">
+                    <div class="prop-name">
+                      <div class="prop-title">400 Bad Request</div>
+                      <div class="prop-ref">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/ErrTy">ErrTy</a>
+                        </span>
+                      </div>
+                      <!-- <span class="swagger-global"></span> <span class="json-schema-reference"><a href=""></a></span> -->
+                    </div>
+                    <div class="prop-value">
+                      <p>400 response</p>
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div class="doc-examples">
+                <h5>Response Content-Types:
+                  <span>application/json</span>
+                </h5>
+                <section>
+                  <h5>Response Example
+                    <span>(200 OK)</span>
+                  </h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
+  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xdeadbeef1337&quot;</span>,
+  <span class="hljs-attr">&quot;from&quot;</span>: <span class="hljs-string">&quot;string&quot;</span>,
+  <span class="hljs-attr">&quot;to&quot;</span>: <span class="hljs-string">&quot;0xD386456eb1Af15A5918E7ECC57142bB2634bF9B9&quot;</span>
+}
+</code></pre>
+                  <!-- </div> -->
+                </section>
+                <section>
+                  <h5>Response Example
+                    <span>(400 Bad Request)</span>
+                  </h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
+  <span class="hljs-attr">&quot;error&quot;</span>: <span class="hljs-string">&quot;Invalid request data.&quot;</span>
+}
+</code></pre>
+                  <!-- </div> -->
+                </section>
+              </div>
+            </div>
+          </div>
+          <div id="operation--sv-light-submitEd25519Delegation-options" class="operation panel" data-traverse-target="operation--sv-light-submitEd25519Delegation-options">
+            <h2 class="operation-title">
+              <span class="operation-name">
+                <span class="operation-name">OPTIONS</span>
+                <span class="operation-path">/sv/light/submitEd25519Delegation</span>
+              </span>
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy"> </div>
+              <div class="doc-examples"></div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="swagger-responses">
+                  <div class="prop-row prop-group">
+                    <div class="prop-name">
+                      <div class="prop-title">200 OK</div>
+                    </div>
+                    <div class="prop-value">
+                      <p>200 response</p>
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div class="doc-examples">
+                <h5>Response Content-Types:
+                  <span>application/json</span>
+                </h5>
+                <section>
+                  <h5>Response Headers
+                    <span>(200 OK)</span>
+                  </h5>
+                  <section class="swagger-response-headers">
+                    <table class="table">
+                      <thead>
+                        <tr>
+                          <th class="swagger-response-header-name"></th>
+                          <th class="swagger-response-header-description"></th>
+                          <th class="swagger-response-header-data-type"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="swagger-response-header-Access-Control-Allow-Origin">
+                          <td> Access-Control-Allow-Origin
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                        <tr class="swagger-response-header-Access-Control-Allow-Methods">
+                          <td> Access-Control-Allow-Methods
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                        <tr class="swagger-response-header-Access-Control-Allow-Credentials">
+                          <td> Access-Control-Allow-Credentials
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                        <tr class="swagger-response-header-Access-Control-Allow-Headers">
+                          <td> Access-Control-Allow-Headers
+                            <td>
+                              <p>undefined</p>
+                            </td>
+                            <td>
+                              <span class="json-property-type">string</span>
+                              <span class="json-property-range" title="Value limits"></span>
+                            </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </section>
+                </section>
+              </div>
+            </div>
+          </div>
           <span id="path--sv-light-submitProxyVote"></span>
           <div id="operation--sv-light-submitProxyVote-post" class="operation panel" data-traverse-target="operation--sv-light-submitProxyVote-post">
             <h2 class="operation-title">
@@ -307,6 +519,124 @@
               <div class="doc-copy">
                 <section class="json-schema-description">
                   <p>An Ethereum address</p>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div id="definition-Ed25519DelegationReq" class="definition panel" data-traverse-target="definition-Ed25519DelegationReq">
+            <h2 class="panel-title">
+              <a name="/definitions/Ed25519DelegationReq"></a>Ed25519DelegationReq: object
+              <!-- <span class="json-property-type">
+              <span class="json-property-type">object</span>
+              <span class="json-property-range" title="Value limits"></span>
+              
+              
+              </span> -->
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="json-schema-description">
+                  <p>An object composed of the ed25519 delegation and metadata about which democracy and subgroup it is for.</p>
+                </section>
+                <section class="json-schema-properties">
+                  <dl>
+                    <dt data-property-name="signature">
+                      <span class="json-property-name">signature:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                      <span class="json-property-required"></span>
+                    </dt>
+                    <dt data-property-name="publickey">
+                      <span class="json-property-name">publickey:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                      <span class="json-property-required"></span>
+                    </dt>
+                    <dt data-property-name="packed">
+                      <span class="json-property-name">packed:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                      <span class="json-property-required"></span>
+                    </dt>
+                  </dl>
+                </section>
+              </div>
+              <div class="doc-examples">
+                <section>
+                  <h5>Example</h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
+  <span class="hljs-attr">&quot;signature&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+  <span class="hljs-attr">&quot;publickey&quot;</span>: <span class="hljs-string">&quot;&quot;</span>,
+  <span class="hljs-attr">&quot;packed&quot;</span>: <span class="hljs-string">&quot;&quot;</span>
+}
+</code></pre>
+                  <!-- </div> -->
+                </section>
+              </div>
+            </div>
+          </div>
+          <div id="definition-Ed25519DelegationResp" class="definition panel" data-traverse-target="definition-Ed25519DelegationResp">
+            <h2 class="panel-title">
+              <a name="/definitions/Ed25519DelegationResp"></a>Ed25519DelegationResp: object
+              <!-- <span class="json-property-type">
+              <span class="json-property-type">object</span>
+              <span class="json-property-range" title="Value limits"></span>
+              
+              
+              </span> -->
+            </h2>
+            <div class="doc-row">
+              <div class="doc-copy">
+                <section class="json-schema-properties">
+                  <dl>
+                    <dt data-property-name="txid">
+                      <span class="json-property-name">txid:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/HexString">HexString</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                    </dt>
+                    <dt data-property-name="from">
+                      <span class="json-property-name">from:</span>
+                      <span class="json-property-type">string</span>
+                      <span class="json-property-range" title="Value limits"></span>
+                    </dt>
+                    <dt data-property-name="to">
+                      <span class="json-property-name">to:</span>
+                      <span class="json-property-type">
+                        <span class="">
+                          <a class="json-schema-ref" href="#/definitions/EthAddress">EthAddress</a>
+                        </span>
+                      </span>
+                      <span class="json-property-range" title="Value limits"></span>
+                    </dt>
+                  </dl>
+                </section>
+              </div>
+              <div class="doc-examples">
+                <section>
+                  <h5>Example</h5>
+                  <!-- <div class="hljs"> --><pre><code class="hljs lang-json">{
+  <span class="hljs-attr">&quot;txid&quot;</span>: <span class="hljs-string">&quot;0xdeadbeef1337&quot;</span>,
+  <span class="hljs-attr">&quot;from&quot;</span>: <span class="hljs-string">&quot;string&quot;</span>,
+  <span class="hljs-attr">&quot;to&quot;</span>: <span class="hljs-string">&quot;0xD386456eb1Af15A5918E7ECC57142bB2634bF9B9&quot;</span>
+}
+</code></pre>
+                  <!-- </div> -->
                 </section>
               </div>
             </div>

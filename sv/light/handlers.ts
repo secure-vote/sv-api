@@ -6,20 +6,19 @@ import { ThrowReporter } from 'io-ts/lib/ThrowReporter'
 
 
 import { verifySignedBallotForProxy } from 'sv-lib/dist/ballotBox'
+import { Bytes32, HexString, Bytes64 } from './runtimeTypes';
 
 
 const ProxyVoteInputRT = t.type({
-    democHash: t.string,
-    extra: t.string,
-    proxyReq: t.tuple([t.string, t.string, t.string, t.string, t.string]),
-    ballotId: t.string
+    democHash: Bytes32,
+    extra: HexString,
+    proxyReq: t.tuple([Bytes32, Bytes32, Bytes32, Bytes32, Bytes32]),
+    ballotId: Bytes32
 })
 
 type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
 
 const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
-    ThrowReporter.report(ProxyVoteInputRT.decode(event))
-
     const {verified, address} = verifySignedBallotForProxy(event)
 
     // sanity check vote
@@ -29,21 +28,21 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
 
     return resp200({txid: "0x-not-done-yet", address})
 }
-export const submitProxyVote: Handler = mkAsyncH<ProxyVoteInput>(submitProxyVoteInner)
+export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVoteInputRT)
 
 
 const Ed25519DelegationReqRT = t.type({
-
+    signature: Bytes64,
+    publickey: Bytes32,
+    packed: Bytes32
 })
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
 
 
-const submitEd25519DelegaitonInner = async (event: Ed25519DelegationReq, context) => {
-    ThrowReporter.report(Ed25519DelegationReqRT.decode(event))
-
+const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context) => {
     const from = "Stellar Addr goes here"
     const to = "0xEth address here"
 
     return resp200({txid: "0x---", from, to})
 }
-export const submitEd25519Delegaiton: Handler = mkAsyncH<Ed25519DelegationReq>(submitEd25519DelegaitonInner)
+export const submitEd25519Delegation: Handler = mkAsyncH(submitEd25519DelegationInner, Ed25519DelegationReqRT)

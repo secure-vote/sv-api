@@ -132,9 +132,21 @@ documentation:
       contentType: application/json
       schema:
         type: object
-        properties: {}
-        required: []
-      example: {}
+        properties:
+          signature:
+            $ref: '{{model: HexString}}'
+          publickey:
+            $ref: '{{model: HexString}}'
+          packed:
+            $ref: '{{model: HexString}}'
+        required:
+          - signature
+          - publickey
+          - packed
+      example:
+        signature: ''
+        publickey: ''
+        packed: ''
 
     - name: Ed25519DelegationResp
       contentType: application/json

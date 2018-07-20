@@ -39,7 +39,7 @@ functions:
                   "application/json": SubmitProxyVoteResp
               - ${self:custom.doc.ErrResp}
   submitEd25519Delegation:
-    handler: sv/light/handlers.submitEd25519Delegaiton
+    handler: sv/light/handlers.submitEd25519Delegation
     events:
       - http:
           method: post
