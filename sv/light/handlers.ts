@@ -15,7 +15,6 @@ const ProxyVoteInputRT = t.type({
     proxyReq: t.tuple([Bytes32, Bytes32, Bytes32, Bytes32, Bytes32]),
     ballotId: Bytes32
 })
-
 type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
 
 const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
@@ -37,7 +36,6 @@ const Ed25519DelegationReqRT = t.type({
     packed: Bytes32
 })
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
-
 
 const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context) => {
     const from = "Stellar Addr goes here"
