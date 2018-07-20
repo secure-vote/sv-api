@@ -38,3 +38,21 @@ functions:
                 responseModels:
                   "application/json": SubmitProxyVoteResp
               - ${self:custom.doc.ErrResp}
+  submitEd25519Delegation:
+    handler: sv/light/handlers.submitEd25519Delegaiton
+    events:
+      - http:
+          method: post
+          path: /sv/light/submitEd25519Delegation
+          cors: true
+          documentation:
+            summary: Publish an Ed25519 -> Eth delegation (e.g. for onboarding voters from a stellar chain)
+            requestBody:
+              description: Submit a signed and packed ed25519 delegation for an arbitrary actor to submit to the chain on your behalf
+            requestModels:
+              "application/json": Ed25519DelegationReq
+            methodResponses:
+              - statusCode: 200
+                responseModels:
+                  "application/json": Ed25519DelegationResp
+              - ${self:custom.doc.ErrResp}
