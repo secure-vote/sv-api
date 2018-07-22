@@ -5,8 +5,8 @@ import * as t from 'io-ts'
 import { ThrowReporter } from 'io-ts/lib/ThrowReporter'
 
 
-import { verifySignedBallotForProxy } from 'sv-lib/dist/ballotBox'
-import { Bytes32, HexString, Bytes64 } from './runtimeTypes';
+import { verifySignedBallotForProxy } from 'sv-lib/lib/ballotBox'
+import { Bytes32, HexString, Bytes64 } from 'sv-lib/lib/runtimeTypes';
 
 
 const ProxyVoteInputRT = t.type({
@@ -33,13 +33,20 @@ export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVote
 const Ed25519DelegationReqRT = t.type({
     signature: Bytes64,
     publickey: Bytes32,
-    packed: Bytes32
+    packed: Bytes32,
+    subgroupVersion: t.Integer
 })
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
 
 const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context) => {
+    // todo: validate ed25519 signature (reconstructing signed blob if needed)
+
+    // return the SETLLAR encoded PK
     const from = "Stellar Addr goes here"
+    // return ethereum address as in data packed
     const to = "0xEth address here"
+
+    // do ethereum classic transaction (or tx based on )
 
     return resp200({txid: "0x---", from, to})
 }

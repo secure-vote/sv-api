@@ -139,14 +139,18 @@ documentation:
             $ref: '{{model: HexString}}'
           packed:
             $ref: '{{model: HexString}}'
+          subgroupVersion:
+            type: number
         required:
           - signature
           - publickey
           - packed
+          - subgroupVersion
       example:
         signature: ''
         publickey: ''
         packed: ''
+        subgroupVersion: 1
 
     - name: Ed25519DelegationResp
       contentType: application/json
