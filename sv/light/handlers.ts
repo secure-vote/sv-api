@@ -2,9 +2,9 @@ import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import { mkAsyncH, errResp, toJ, resp200, assertHaveParams, SvHandler } from './helpers';
 import { isArray } from 'util';
 import * as t from 'io-ts'
-import { ThrowReporter } from 'io-ts/lib/ThrowReporter'
+import { ThrowReporter } from 'io-ts/lib/ThrowReporter';
 
-// import * as StellarBase from 'stellar-base'
+import * as StellarBase from 'stellar-base';
 import * as Eth from 'ethjs'
 import * as EthAbi from 'ethjs-abi'
 import * as EthSign from 'ethjs-signer'
@@ -44,28 +44,29 @@ const Ed25519DelegationReqRT = t.type({
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
 
 const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context) => {
-    const { signature, publickey, packed } = event
-
-    // Validate delegation is valid
-    const isValid = ed25519DelegationIsValid(packed, publickey, signature);
-
-    if (!isValid) {
-        throw new Error('Signature does not seem to be valid')
-    }
-
-    // Initialise SV light
+    // Testing variables - These will live seperately in the future
     const networkId = 42;
     const chainId = 1;
-    const privKey = "not required?";
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
     const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
 
     const svConfig = await getNetwork(networkId, chainId);
-    console.log('svConfig :', svConfig);
+    const { signature, publickey, packed } = event
 
+    const isValidPublicKey = StellarBase.StrKey.isValidEd25519PublicKey(publickey)
+    console.log('isValidPublicKey :', isValidPublicKey);
+
+    if (!isValidPublicKey) {
+        return errResp('Not a valid public key');
+    }
+
+    // Validate delegation is valid
+    const isValidSignature = ed25519DelegationIsValid(packed, publickey, signature);
+    if (!isValidSignature) {
+        return errResp('Signature is not valid');
+    }
 
     // Get the hex of the public key
-    const StellarBase = require('stellar-base')
     const kp = StellarBase.Keypair.fromPublicKey(publickey)
     const rawPubKey = kp.rawPublicKey()
     const hexPubKey = '0x' + rawPubKey.toString('hex');
@@ -76,7 +77,6 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
 
     // Use the API snippet to generate the function bytecode
     const addUntrustedSelfDelegationABI = [{"inputs": [{"type": "bytes32"},{"type": "bytes32"},{"type": "bytes32[2]"}],}]
-
     const inputByteCode = EthAbi.encodeMethod(addUntrustedSelfDelegationABI[0], [packed, hexPubKey, [sig1, sig2]])
 
     // Create an instance of eth-js
@@ -86,11 +86,15 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
 
     // Get the nonce
     const nonce = await eth.getTransactionCount(testingAddress)
-        .catch(e => { throw e })
+        .catch(e => {
+            return errResp(e);
+         })
 
     // Sign and send the transaction
     const txHash = await eth.sendRawTransaction(sign({ to: unsafeEd25519DelegationAddr, value: '0', gas: 500000, nonce: nonce, data: inputByteCode }, testingPrivateKey))
-        .catch(e => { throw e })
+        .catch(e => {
+            return errResp(e);
+         })
 
     return resp200({ txid: txHash, from: publickey, to: packed })
 }
