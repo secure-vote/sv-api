@@ -13,6 +13,17 @@ provider:
   runtime: nodejs8.10
   region: ap-southeast-2
   stage: ${opt:stage, 'dev'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:ap-southeast-2:040288997789:table/address_nonces"
+
 
 custom:
   customDomain: ${file(sls-${self:provider.stage}-domain.yml)}

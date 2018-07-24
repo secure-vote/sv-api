@@ -8,6 +8,8 @@ export const toJ = doc => JSON.stringify(doc, null, 2);
 
 export const errResp = (str, extraProps = {}) => ({ ...extraProps, statusCode: 400, body: isString(str) ? str : toJ({ error: str }) });
 
+export const errWrap = (common) => (str, extraProps = {}) => errResp(`${common}: ${toJ(str)}`, extraProps)
+
 export const resp200 = (doc, extraProps = {}) => ({ ...extraProps, statusCode: 200, body: toJ(doc) });
 
 export const assertHaveParams = (event, params: string[]) => {
