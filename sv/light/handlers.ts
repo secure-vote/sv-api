@@ -99,9 +99,8 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     });
     const dynamoDb = new doc.DynamoDB();
 
-    const getDbNonceData = async (address: string) => {
+    const getDbNonceData = (address: string) => {
         return new Promise((resolve, reject) => {
-            // Get from the DB
             const params = {
                 TableName: 'address_nonces',
                 KeyConditionExpression: 'publicAddress = :publicAddress',
@@ -110,31 +109,57 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
                     ':publicAddress': address,
                 },
                 ScanIndexForward: false,
-                Limit: 1
+                Limit: 10
             }
-            let respData = {}
             dynamoDb.query(params, function (err, data) {
                 if (err) {
                     console.log('err :', err);
-                    reject(err)
+                    reject(err);
                 } else {
                     console.log('Query succeeded.', data);
-                    resolve(data)
+                    resolve(data);
                 }
             });
         });
     }
 
     const putDbItem = async (itemToPut: any) => {
-        return new Promise((resolve, reject) => {
-            dynamoDb.putItem(itemToPut, function(err, data) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve('success');
-                }
-            });
+        dynamoDb.putItem(itemToPut, function(err, data) {
+            if (err) {
+                console.log('Got error putting item')
+                return err;
+            } else {
+                return 'success'
+            }
         });
+    }
+
+    const reserveNonceAndSendTx = async (nonce: number) => {
+        const signedTx = sign({ to: unsafeEd25519DelegationAddr, gas: 300000, gasPrice: testingGasPrice, nonce: nonce, data: inputByteCode }, testingPrivateKey);
+        const reserveNonceParams = {
+            TableName: 'address_nonces',
+            Item: {
+                publicAddress: testingAddress,
+                nonce: nonce,
+                txHash: 'reserved',
+                packed: packed,
+                signature: signature,
+                publicKey: publickey,
+                signedTx: signedTx
+            }
+        };
+        const _reserveNonce:any = await putDbItem(reserveNonceParams);
+        if (_reserveNonce instanceof Error) {
+            return _reserveNonce;
+        }
+        const txHash = await eth.sendRawTransaction(signedTx);
+        reserveNonceParams.Item.txHash = txHash;
+        const _updateNonce:any = await putDbItem(reserveNonceParams);
+        if (_updateNonce instanceof Error) {
+            return _updateNonce;
+        }
+
+        return txHash;
     }
 
     // Get the info from the database
@@ -147,76 +172,11 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     console.log(`Highest nonce recorded in DB is ${highestNonceItem.nonce}, ethTxCount is ${ethTxCount}`)
 
     const ethNonce = ethTxCount.toNumber();
-    const dbNonce = highestNonceItem.nonce
-    console.log('ethNonce :', ethNonce);
-    console.log('typeof', typeof ethNonce, typeof dbNonce);
+    const _nextNonce = highestNonceItem.nonce + 1
+    const nonceToUse = _nextNonce < ethNonce ? ethNonce : _nextNonce
 
-    switch (true) {
-        case dbNonce + 1 == ethNonce: // Expected case, the last recorded nonce in the DB should be 1 less than the ethNonce
-            // Reserve the nonce in the DB
-            const putItemParams = { Item: { publicAddress: testingAddress, nonce: ethNonce, txHash: 'reserved' }, TableName: 'address_nonces' };
-            const putItem = await putDbItem(putItemParams);
-            if (putItem instanceof Error) {
-                return errResp('Failed to put pending tx into database');
-            }
+    const txHash = await reserveNonceAndSendTx(nonceToUse).catch(e => errResp('Error reserving nonce and sending TX'));
 
-            const txHash = await eth.sendRawTransaction(sign({ to: unsafeEd25519DelegationAddr, gas: 300000, gasPrice: testingGasPrice, nonce: ethNonce, data: inputByteCode }, testingPrivateKey)).catch(e => {
-                return errResp(e);
-            });
-
-            // Update the putItemParams with the txHash and put it back in the DB
-            putItemParams.Item.txHash = txHash
-            const putUpdatedItem = await putDbItem(putItemParams);
-
-            // Once it's updated, return with 200 response
-            if (putUpdatedItem == 'success') {
-                return resp200({ txid: txHash, from: publickey, to: packed });
-            }
-            break;
-        case dbNonce >= ethNonce: // This case should occur when there are pending transactions, or transactions have failed
-            // Needs the most interrogation
-            const highestTxHash = highestNonceItem.txHash
-            if (highestTxHash == 'pending') { // Transaction has been recorded as pending - Need to assume this is the case and that the transaction will go through...
-
-            } else if (highestTxHash.length == 66 && highestTxHash.slice(0, 2) == '0x') { // Check to see how it ended up?
-                // Todo..
-                const tx = await eth.getTransactionSuccess(highestTxHash)
-                console.log('TX Successs...', tx)
-
-                switch (true) {
-                    case tx.status == '0x0':
-                    break;
-                    case tx.status == '0x1':
-                    break;
-                    default:
-                    break;
-                }
-            } else {
-                return errResp('Seems to be invalid transactons');
-            }
-            break;
-        case dbNonce < ethNonce: // This case shouldn't really occur - only if the address has made some other transactions
-            // Reserve the nonce in the db according to
-            return errResp('DB nonce and recorded eth transactions in an invalid state. This error should not occur.');
-            //
-
-            break;
-        default:
-            return errResp('DB nonce and recorded eth transactions in an invalid state. This error should not occur.');
-            break;
-    }
-
-
-    return resp200(dbData)
-
-    // const highestDbNonce = 'tbc'
-
-    // // Compare and assign appropriate value
-
-
-
-    // console.log('nonce :', nonce);
-
-
+    return resp200({ txid: txHash, from: publickey, to: packed });
 }
 export const submitEd25519Delegation: Handler = mkAsyncH(submitEd25519DelegationInner, Ed25519DelegationReqRT)
