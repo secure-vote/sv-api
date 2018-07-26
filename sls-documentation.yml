@@ -152,6 +152,17 @@ documentation:
         packed: ''
         subgroupVersion: 1
 
+    - name: submitProxyProposalResp
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          txid:
+            $ref: '{{model: HexString}}'
+          ballotHash:
+            $ref: '{{model: HexString}}'
+
+
     - name: Ed25519DelegationResp
       contentType: application/json
       schema:

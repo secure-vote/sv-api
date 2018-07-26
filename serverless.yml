@@ -49,6 +49,24 @@ functions:
                 responseModels:
                   "application/json": SubmitProxyVoteResp
               - ${self:custom.doc.ErrResp}
+  # submitProxyProposal:
+  #   handler: sv/light/handlers.submitProxyProposal
+  #   events:
+  #     - http:
+  #         method: post
+  #         path: /sv/light/submitProxyProposal
+  #         cors: true
+  #         documentation:
+  #           summary: Publish a signed vote
+  #           requestBody:
+  #             description: Submit a signed and packed vote for an arbitrary actor to submit to the chain on your behalf
+  #           requestModels:
+  #             "application/json": ProxyVoteInput
+  #           methodResponses:
+  #             - statusCode: 200
+  #               responseModels:
+  #                 "application/json": submitProxyProposalResp
+  #             - ${self:custom.doc.ErrResp}
   submitEd25519Delegation:
     handler: sv/light/handlers.submitEd25519Delegation
     events:
