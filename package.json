@@ -11,7 +11,7 @@
     "docs": "sls downloadDocumentation --outputFileName=swagger-docs.json && ./convDocSpec.js && spectacle -t docs swagger-docs.json # bootprint openapi ./swagger-docs.json docs",
     "deploy": "npm run pkg-docker && npm run pkg-deploy && npm run docs",
     "pkg-deploy": "sls deploy --package pkg-docker",
-    "pkg-docker": "time docker run --cpus=2 -v ~/src/sv/api:/lambda -it lambci/lambda:build-nodejs8.10 /lambda/docker-build.sh"
+    "pkg-docker": "time docker run --cpus=2 -v $(pwd):/lambda -it lambci/lambda:build-nodejs8.10 /lambda/docker-build.sh"
   },
   "dependencies": {
     "bn.js": "^4.11.8",
