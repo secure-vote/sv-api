@@ -6,7 +6,7 @@ import { failure } from "io-ts/lib/PathReporter"
 
 export const toJ = doc => JSON.stringify(doc, null, 2);
 
-export const errResp = (str, extraProps = {}) => ({ ...extraProps, statusCode: 400, body: isString(str) ? str : toJ({ error: str }) });
+export const errResp = (str, extraProps = {}) => ({ ...extraProps, statusCode: 400, body: toJ({ error: str }) });
 
 export const errWrap = (common) => (str, extraProps = {}) => errResp(`${common}: ${toJ(str)}`, extraProps)
 
