@@ -62,6 +62,7 @@ functions:
               - ${self:custom.doc.ErrResp}
   submitProxyProposal:
     handler: sv/light/handlers.submitProxyProposal
+    timeout: 30
     events:
       - http:
           method: post

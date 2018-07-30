@@ -18,27 +18,21 @@
     "bn.js": "^4.11.8",
     "btoa": "^1.2.1",
     "dynamodb-doc": "^1.0.0",
-    "ethers": "^3.0.25",
+    "ethers": "^3.0.26",
     "ethjs": "^0.4.0",
     "ethjs-signer": "^0.1.1",
     "io-ts": "^1.2.1",
     "ramda": "^0.25.0",
-<<<<<<< HEAD
     "scrypt.js": "^0.2.0",
     "scryptsy": "^2.0.0",
     "source-map-support": "^0.5.6",
     "sv-lib": "^0.2.1",
-=======
-    "sha256": "^0.2.0",
-    "source-map-support": "^0.5.0",
-    "sv-lib": "^0.2.0",
->>>>>>> submit-proxy-proposal
-    "web3": "^1.0.0-beta.34",
+    "web3": "^1.0.0-beta.35",
     "websocket": "^1.0.26"
   },
   "devDependencies": {
     "@types/aws-lambda": "0.0.22",
-    "@types/node": "^8.0.57",
+    "@types/node": "^8.10.22",
     "@types/ramda": "^0.25.35",
     "babel-runtime": "^6.26.0",
     "json-schema-to-openapi-schema": "^0.2.0",

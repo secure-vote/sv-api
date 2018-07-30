@@ -13,10 +13,11 @@ import * as sha256 from 'sha256'
 
 import { getNetwork } from 'sv-lib/lib/const'
 import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight } from 'sv-lib/lib/light';
-<<<<<<< HEAD
-import { verifySignedBallotForProxy } from 'sv-lib/lib/ballotBox'
+import { verifySignedBallotForProxy, mkPacked, mkSubmissionBits, flags } from 'sv-lib/lib/ballotBox'
 import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
-
+const btoa = require('btoa')
+import axios from 'axios'
+const Web3:any = require('web3')
 
 import * as websocket from 'websocket'  //workaround for build issue https://github.com/serverless-heaven/serverless-webpack/issues/223
 import 'source-map-support/register'  // as above
@@ -27,24 +28,7 @@ const ProxyVoteInputRT = t.type({
     extra: HexStringRT,
     proxyReq: t.tuple([Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT]),
     ballotId: Bytes32RT
-})
-=======
-// import { toEthHex } from 'sv-lib/lib/utils';
-// import * as API from 'sv-lib/lib/api';
-import { verifySignedBallotForProxy } from 'sv-lib/lib/ballotBox';
-// import { t.string, t.string, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
-const btoa = require('btoa')
-const axios = require('axios')
-
-
-
-const ProxyVoteInputRT = t.type({
-    democHash: t.string,
-    extra: t.string,
-    proxyReq: t.tuple([t.string, t.string, t.string, t.string, t.string]),
-    ballotId: t.string
 });
->>>>>>> submit-proxy-proposal
 type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
 
 const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
@@ -61,15 +45,9 @@ export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVote
 
 
 const Ed25519DelegationReqRT = t.type({
-<<<<<<< HEAD
     signature: Bytes64RT,
     publickey: t.string,
     packed: Bytes32RT,
-=======
-    signature: t.string,
-    publickey: t.string,
-    packed: t.string,
->>>>>>> submit-proxy-proposal
     subgroupVersion: t.Integer
 })
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
@@ -110,7 +88,7 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     const sig2 = `0x${signature.substring(66)}`
 
     // Use the API snippet to generate the function bytecode
-    const addUntrustedSelfDelegationABI = [{ constant: false, inputs: [{ name: 'dlgtRequest', type: 't.string' }, { name: 'pubKey', type: 't.string' }, { name: 'signature', type: 't.string[2]' }], name: 'addUntrustedSelfDelegation', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
+    const addUntrustedSelfDelegationABI = [{ constant: false, inputs: [{ name: 'dlgtRequest', type: 'bytes32' }, { name: 'pubKey', type: 'bytes32' }, { name: 'signature', type: 'bytes32[2]' }], name: 'addUntrustedSelfDelegation', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
     const inputByteCode = EthAbi.encodeMethod(addUntrustedSelfDelegationABI[0], [packed, hexPubKey, [sig1, sig2]])
 
     console.log('packed :', packed);
@@ -228,35 +206,75 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     console.log(ballotSpec, democHash, startTime, endTime, networkId);
 
     const ballotHash = `0x${sha256(ballotSpec)}`
-    const ballotBase64 = btoa(unescape(encodeURIComponent(ballotSpec)))
+    console.log('ballotHash :', ballotHash);
+    //const ballotBase64 = btoa(unescape(encodeURIComponent(ballotSpec)))
+    const ballotBase64 = Buffer.from(ballotSpec).toString('base64');
+    console.log('ballotBase64 :', ballotBase64);
     const archivePushUrl = 'https://archive.test.push.secure.vote/';
 
-    const { data } = axios.post(
+
+    const response:any = await axios.post(
         archivePushUrl,
         {
-            ballotBase64: ballotBase64, assertSpecHash: ballotHash
+            ballotBase64: ballotBase64,
+            assertSpecHash: ballotHash
         },
         {
             headers: {
                 'Content-Type': 'application/json',
                 'x-api-key': 'UmNrB7cifZ2N1LlnyM4RXK1xuK2VpIQaamgmlSBb'
-            }
-        }
+            },
+        },
     ).catch(error => console.log(error))
 
-    if (data !== ballotHash) {
+    if (response.data !== ballotHash) {
         return errResp('Invalid response from ballot archive');
     }
-
-
     // Get additional data + etc
+    const netConf = getNetwork(42, 42)
+    console.log('netConf :', netConf);
 
+    const { httpProvider } = netConf
+    const web3:any = new Web3(httpProvider)
 
-    // Sign TX
+    const { USE_ETH, USE_SIGNED, USE_NO_ENC, USE_ENC, IS_BINDING, IS_OFFICIAL, USE_TESTING } = flags
 
+    const submissionBits = mkSubmissionBits(USE_ETH, USE_NO_ENC, USE_TESTING)
+    const extraData = mkPacked(startTime, endTime, submissionBits)
 
-    // Send tx
+    const indexAddress = '0xcad76ee606fb794dd1da2c7e3c8663f648ba431d';
+    const deployBallotABI = [{
+        "constant": false,
+        "inputs": [{ "name": "democHash", "type": "bytes32" }, { "name": "specHash", "type": "bytes32" }, { "name": "extraData", "type": "bytes32" }, { "name": "packed", "type": "uint256" }],
+        "name": "dDeployBallot",
+        "outputs": [],
+        "payable": true,
+        "stateMutability": "payable",
+        "type": "function"
+    }]
 
-    return resp200({ ballotHash: ballotHash });
+    const index = new web3.eth.Contract(deployBallotABI, indexAddress);
+    const deployBallot = index.methods.dDeployBallot(democHash, ballotHash, '0x00', extraData);
+
+    const txData = deployBallot.encodeABI()
+    console.log('txData :', txData);
+
+    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
+    const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
+
+    const tx = {
+        data: txData,
+        to: indexAddress,
+        gas: 500000
+    }
+
+    const signedTx:any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey)
+    console.log('signedTx :', signedTx);
+    const { rawTransaction } = signedTx
+    console.log('rawTransaction :', rawTransaction);
+    const sendTx = await web3.eth.sendSignedTransaction(rawTransaction)
+    console.log('sendTx :', sendTx);
+
+    return resp200({ txData: txData });
 }
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
