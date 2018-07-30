@@ -1,7 +1,7 @@
 const path = require('path');
 const slsw = require('serverless-webpack');
 const webpack = require('webpack')
-// const nodeExternals = require('webpack-node-externals');
+const nodeExternals = require('webpack-node-externals');
 
 const entries = {};
 
@@ -19,7 +19,13 @@ module.exports = {
       '.json',
       '.ts',
       '.tsx'
-    ]
+    ],
+    alias: {
+      'scrypt.js': path.resolve('./node_modules/scrypt.js/js.js'),
+      // 'swarm-js': path.resolve(__dirname, '../node_modules/swarm-js/lib/api-browser.js'),
+      // 'fs': path.resolve(__dirname, '../src/app/fs-fake.js'),
+    },
+    modules: [path.resolve('./node_modules')],
   },
   output: {
     libraryTarget: 'commonjs',
@@ -31,12 +37,14 @@ module.exports = {
     loaders: [
       { test: /\.ts(x?)$/, loader: 'ts-loader' },
     ],
-    noParse: [/^websocket$/]
+    // noParse: [/^websocket$/]
   },
   plugins: [
-    new webpack.IgnorePlugin(/scrypt/),
-    new webpack.IgnorePlugin(/electron/)
+    new webpack.IgnorePlugin(/electron/),
+    // new webpack.IgnorePlugin(/scrypt/),
   ],
-  externals: ['websocket']
-  // externals: [ nodeExternals() ],
+  externals: [
+    // 'scrypt',
+    nodeExternals(),
+  ]
 };

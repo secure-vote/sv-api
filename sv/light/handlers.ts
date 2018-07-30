@@ -12,14 +12,18 @@ import * as EthSign from 'ethjs-signer'
 import { getNetwork } from 'sv-lib/lib/const'
 import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight } from 'sv-lib/lib/light';
 import { verifySignedBallotForProxy } from 'sv-lib/lib/ballotBox'
-import { Bytes32, HexString, Bytes64 } from 'sv-lib/lib/runtimeTypes';
+import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
+
+
+import * as websocket from 'websocket'  //workaround for build issue https://github.com/serverless-heaven/serverless-webpack/issues/223
+import 'source-map-support/register'  // as above
 
 
 const ProxyVoteInputRT = t.type({
-    democHash: Bytes32,
-    extra: HexString,
-    proxyReq: t.tuple([Bytes32, Bytes32, Bytes32, Bytes32, Bytes32]),
-    ballotId: Bytes32
+    democHash: Bytes32RT,
+    extra: HexStringRT,
+    proxyReq: t.tuple([Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT]),
+    ballotId: Bytes32RT
 })
 type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
 
@@ -37,9 +41,9 @@ export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVote
 
 
 const Ed25519DelegationReqRT = t.type({
-    signature: Bytes64,
+    signature: Bytes64RT,
     publickey: t.string,
-    packed: Bytes32,
+    packed: Bytes32RT,
     subgroupVersion: t.Integer
 })
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
