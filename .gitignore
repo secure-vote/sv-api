@@ -1,5 +1,6 @@
 # package directories
 node_modules
+node_modules.*
 jspm_packages
 
 # Serverless directories
@@ -11,3 +12,5 @@ jspm_packages
 swagger-docs.json
 
 .DS_Store
+
+pkg-docker

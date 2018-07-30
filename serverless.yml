@@ -24,11 +24,22 @@ provider:
         - dynamodb:DeleteItem
       Resource: "arn:aws:dynamodb:ap-southeast-2:040288997789:table/address_nonces"
 
+package:
+  include:
+    - node_modules/websocket/**
 
 custom:
   customDomain: ${file(sls-${self:provider.stage}-domain.yml)}
   documentation: ${file(sls-documentation.yml):documentation}
   doc: ${file(sls-documentation.yml):docFrags}
+  webpackIncludeModules:
+    forceInclude:
+      - websocket
+    # forceExclude: [ "scrypt" ]
+  # webpack:
+  #   webpackConfig: 'webpack.config.js'
+  #   includeModules: true
+  #   packager: 'npm'
 
 functions:
   submitProxyVote:
