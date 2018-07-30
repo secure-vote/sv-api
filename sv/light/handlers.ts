@@ -9,8 +9,11 @@ import * as StellarBase from 'stellar-base';
 import * as Eth from 'ethjs'
 import * as EthAbi from 'ethjs-abi'
 import * as EthSign from 'ethjs-signer'
+import * as sha256 from 'sha256'
+
 import { getNetwork } from 'sv-lib/lib/const'
 import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight } from 'sv-lib/lib/light';
+<<<<<<< HEAD
 import { verifySignedBallotForProxy } from 'sv-lib/lib/ballotBox'
 import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
 
@@ -25,6 +28,23 @@ const ProxyVoteInputRT = t.type({
     proxyReq: t.tuple([Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT]),
     ballotId: Bytes32RT
 })
+=======
+// import { toEthHex } from 'sv-lib/lib/utils';
+// import * as API from 'sv-lib/lib/api';
+import { verifySignedBallotForProxy } from 'sv-lib/lib/ballotBox';
+// import { t.string, t.string, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
+const btoa = require('btoa')
+const axios = require('axios')
+
+
+
+const ProxyVoteInputRT = t.type({
+    democHash: t.string,
+    extra: t.string,
+    proxyReq: t.tuple([t.string, t.string, t.string, t.string, t.string]),
+    ballotId: t.string
+});
+>>>>>>> submit-proxy-proposal
 type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
 
 const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
@@ -41,9 +61,15 @@ export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVote
 
 
 const Ed25519DelegationReqRT = t.type({
+<<<<<<< HEAD
     signature: Bytes64RT,
     publickey: t.string,
     packed: Bytes32RT,
+=======
+    signature: t.string,
+    publickey: t.string,
+    packed: t.string,
+>>>>>>> submit-proxy-proposal
     subgroupVersion: t.Integer
 })
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
@@ -79,12 +105,12 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     const rawPubKey = kp.rawPublicKey()
     const hexPubKey = '0x' + rawPubKey.toString('hex');
 
-    // Split the 64 bytes of the signature into an array containging 2x bytes32
+    // Split the 64 bytes of the signature into an array containging 2x t.string
     const sig1 = signature.substring(0, 66)
     const sig2 = `0x${signature.substring(66)}`
 
     // Use the API snippet to generate the function bytecode
-    const addUntrustedSelfDelegationABI = [{ constant: false, inputs: [{ name: 'dlgtRequest', type: 'bytes32' }, { name: 'pubKey', type: 'bytes32' }, { name: 'signature', type: 'bytes32[2]' }], name: 'addUntrustedSelfDelegation', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
+    const addUntrustedSelfDelegationABI = [{ constant: false, inputs: [{ name: 'dlgtRequest', type: 't.string' }, { name: 'pubKey', type: 't.string' }, { name: 'signature', type: 't.string[2]' }], name: 'addUntrustedSelfDelegation', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
     const inputByteCode = EthAbi.encodeMethod(addUntrustedSelfDelegationABI[0], [packed, hexPubKey, [sig1, sig2]])
 
     console.log('packed :', packed);
@@ -184,3 +210,53 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     return resp200({ txid: txHash, from: publickey, to: packed });
 }
 export const submitEd25519Delegation: Handler = mkAsyncH(submitEd25519DelegationInner, Ed25519DelegationReqRT)
+
+
+const ProxyProposalInputRT = t.type({
+    ballotSpec: t.string,
+    democHash: t.string,
+    startTime: t.Integer,
+    endTime: t.Integer,
+    networkId: t.string
+})
+type ProxyProposalInput = t.TypeOf<typeof ProxyProposalInputRT>
+
+
+const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
+    // Check contents of ballot
+    const { ballotSpec, democHash, startTime, endTime, networkId } = event;
+    console.log(ballotSpec, democHash, startTime, endTime, networkId);
+
+    const ballotHash = `0x${sha256(ballotSpec)}`
+    const ballotBase64 = btoa(unescape(encodeURIComponent(ballotSpec)))
+    const archivePushUrl = 'https://archive.test.push.secure.vote/';
+
+    const { data } = axios.post(
+        archivePushUrl,
+        {
+            ballotBase64: ballotBase64, assertSpecHash: ballotHash
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': 'UmNrB7cifZ2N1LlnyM4RXK1xuK2VpIQaamgmlSBb'
+            }
+        }
+    ).catch(error => console.log(error))
+
+    if (data !== ballotHash) {
+        return errResp('Invalid response from ballot archive');
+    }
+
+
+    // Get additional data + etc
+
+
+    // Sign TX
+
+
+    // Send tx
+
+    return resp200({ ballotHash: ballotHash });
+}
+export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
