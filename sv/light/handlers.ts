@@ -205,6 +205,17 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const { ballotSpec, democHash, startTime, endTime, networkId } = event;
     console.log(ballotSpec, democHash, startTime, endTime, networkId);
 
+    // Check to ensure the ballotSpec is correct
+    const { ed25519sig, proposerPk }  = JSON.parse(ballotSpec).subgroupInner;
+    const placeholderBallotSpec = ballotSpec.replace(ed25519sig, '**SIG_1**')
+
+    const isValid = ed25519DelegationIsValid(placeholderBallotSpec, proposerPk, ed25519sig);
+    console.log('isValid :', isValid);
+
+    if (!isValid) {
+        return errResp('Signature is not valid!')
+    }
+
     const ballotHash = `0x${sha256(ballotSpec)}`
     console.log('ballotHash :', ballotHash);
     //const ballotBase64 = btoa(unescape(encodeURIComponent(ballotSpec)))
@@ -225,22 +236,27 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
                 'x-api-key': 'UmNrB7cifZ2N1LlnyM4RXK1xuK2VpIQaamgmlSBb'
             },
         },
-    ).catch(error => console.log(error))
+    ).catch(error => console.log(error));
 
     if (response.data !== ballotHash) {
         return errResp('Invalid response from ballot archive');
     }
     // Get additional data + etc
-    const netConf = getNetwork(42, 42)
+    const netConf = getNetwork(42, 42);
     console.log('netConf :', netConf);
 
-    const { httpProvider } = netConf
-    const web3:any = new Web3(httpProvider)
+    const { httpProvider } = netConf;
+    const web3:any = new Web3(httpProvider);
 
-    const { USE_ETH, USE_SIGNED, USE_NO_ENC, USE_ENC, IS_BINDING, IS_OFFICIAL, USE_TESTING } = flags
+    const { USE_ETH, USE_SIGNED, USE_NO_ENC, USE_ENC, IS_BINDING, IS_OFFICIAL, USE_TESTING } = flags;
 
-    const submissionBits = mkSubmissionBits(USE_ETH, USE_NO_ENC, USE_TESTING)
-    const extraData = mkPacked(startTime, endTime, submissionBits)
+    const submissionBits = mkSubmissionBits(USE_ETH, USE_NO_ENC);
+
+    console.log('submissionBits :', submissionBits);
+
+    const extraData = mkPacked(startTime, endTime, submissionBits);
+
+    console.log('extraData :', extraData);
 
     const indexAddress = '0xcad76ee606fb794dd1da2c7e3c8663f648ba431d';
     const deployBallotABI = [{
@@ -268,13 +284,18 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
         gas: 500000
     }
 
-    const signedTx:any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey)
+    const signedTx:any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey);
     console.log('signedTx :', signedTx);
-    const { rawTransaction } = signedTx
+    const { rawTransaction } = signedTx;
     console.log('rawTransaction :', rawTransaction);
-    const sendTx = await web3.eth.sendSignedTransaction(rawTransaction)
-    console.log('sendTx :', sendTx);
 
-    return resp200({ txData: txData });
+    return await web3.eth.sendSignedTransaction(rawTransaction)
+        .then (r => {
+            console.log('Sending signed transaction was successful. Response:', r)
+            return resp200(r.transactionHash)
+        })
+        // .once('transactionHash', hash => { return resp200(hash) })
+        // .on('error', e => { return errResp(e) })
+        .catch(e => { return errResp(e) });
 }
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
