@@ -206,10 +206,10 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     console.log(ballotSpec, democHash, startTime, endTime, networkId);
 
     // Check to ensure the ballotSpec is correct
-    const { ed25519sig, proposerPk }  = JSON.parse(ballotSpec).subgroupInner;
-    const placeholderBallotSpec = ballotSpec.replace(ed25519sig, '**SIG_1**')
+    const { signature, proposerPk }  = JSON.parse(ballotSpec).subgroupInner;
+    const placeholderBallotSpec = ballotSpec.replace(signature, '**SIG_1**')
 
-    const isValid = ed25519DelegationIsValid(placeholderBallotSpec, proposerPk, ed25519sig);
+    const isValid = ed25519DelegationIsValid(placeholderBallotSpec, proposerPk, signature);
     console.log('isValid :', isValid);
 
     if (!isValid) {
