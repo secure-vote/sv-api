@@ -205,78 +205,63 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const { ballotSpec, democHash, startTime, endTime, networkId } = event;
     console.log(ballotSpec, democHash, startTime, endTime, networkId);
 
-    // Check to ensure the ballotSpec is correct
-    const { signature, proposerPk }  = JSON.parse(ballotSpec).subgroupInner;
-    const placeholderBallotSpec = ballotSpec.replace(signature, '**SIG_1**')
+    // This is hard coded at the moment, we will use the test net for anything that isn't declared as mainnet
+    const network = (networkId === 'mainnet') ? [1, 1] : [42, 42]
+    const netConf = getNetwork(network[0], network[1]);
+    const { httpProvider, archivePushUrl, indexEnsName, ensResolver } = netConf
 
-    const isValid = ed25519DelegationIsValid(placeholderBallotSpec, proposerPk, signature);
-    console.log('isValid :', isValid);
 
-    if (!isValid) {
-        return errResp('Signature is not valid!')
-    }
+    // TODO - Offload the below to SV Lib once it has been updated
+    // if (!isEd25519SignedBallotValid(ballotSpec)) { return errResp('Signature is not valid') }
+        const { signature, proposerPk }  = JSON.parse(ballotSpec).subgroupInner;
+        const placeholderBallotSpec = ballotSpec.replace(signature, '**SIG_1**')
+        console.log('placeholderBallotSpec :', placeholderBallotSpec);
 
+        const isValid = ed25519DelegationIsValid(placeholderBallotSpec, proposerPk, signature);
+        if (!isValid) { return errResp('Signature is not valid') }
+    // END TODO
+
+    // TODO - Offload the below to SV Lib
+    // const ballotHash = await deployBallotSpec(archivePushUrl, ballotSpec);
     const ballotHash = `0x${sha256(ballotSpec)}`
     console.log('ballotHash :', ballotHash);
-    //const ballotBase64 = btoa(unescape(encodeURIComponent(ballotSpec)))
     const ballotBase64 = Buffer.from(ballotSpec).toString('base64');
-    console.log('ballotBase64 :', ballotBase64);
-    const archivePushUrl = 'https://archive.test.push.secure.vote/';
-
-
-    const response:any = await axios.post(
+    const requestData = { ballotBase64: ballotBase64, assertSpecHash: ballotHash }
+    const requestHeaders = { 'Content-Type': 'application/json', 'x-api-key': 'UmNrB7cifZ2N1LlnyM4RXK1xuK2VpIQaamgmlSBb' }
+    const response: any = await axios.post(
         archivePushUrl,
+        requestData,
         {
-            ballotBase64: ballotBase64,
-            assertSpecHash: ballotHash
-        },
-        {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': 'UmNrB7cifZ2N1LlnyM4RXK1xuK2VpIQaamgmlSBb'
-            },
-        },
-    ).catch(error => console.log(error));
+            headers: requestHeaders
+        }
+    ).catch(error => { return error });
+    if (response.data !== ballotHash) { return errResp('Invalid response from ballot archive') }
+    // END TODO
 
-    if (response.data !== ballotHash) {
-        return errResp('Invalid response from ballot archive');
-    }
     // Get additional data + etc
-    const netConf = getNetwork(42, 42);
-    console.log('netConf :', netConf);
+    // TODO - simplify this once sv-lib is updated
+    // const { index } = svNetwork
+        const web3:any = new Web3(httpProvider);
+        const indexAddress = '0xcad76ee606fb794dd1da2c7e3c8663f648ba431d';
+        const deployBallotABI = [{
+            "constant": false,
+            "inputs": [{ "name": "democHash", "type": "bytes32" }, { "name": "specHash", "type": "bytes32" }, { "name": "extraData", "type": "bytes32" }, { "name": "packed", "type": "uint256" }],
+            "name": "dDeployBallot",
+            "outputs": [],
+            "payable": true,
+            "stateMutability": "payable",
+            "type": "function"
+        }]
+        const index = new web3.eth.Contract(deployBallotABI, indexAddress);
+    // END TODO
 
-    const { httpProvider } = netConf;
-    const web3:any = new Web3(httpProvider);
-
+    // Prepare deploy ballot function arguments
     const { USE_ETH, USE_SIGNED, USE_NO_ENC, USE_ENC, IS_BINDING, IS_OFFICIAL, USE_TESTING } = flags;
-
     const submissionBits = mkSubmissionBits(USE_ETH, USE_NO_ENC);
-
-    console.log('submissionBits :', submissionBits);
-
     const extraData = mkPacked(startTime, endTime, submissionBits);
 
-    console.log('extraData :', extraData);
-
-    const indexAddress = '0xcad76ee606fb794dd1da2c7e3c8663f648ba431d';
-    const deployBallotABI = [{
-        "constant": false,
-        "inputs": [{ "name": "democHash", "type": "bytes32" }, { "name": "specHash", "type": "bytes32" }, { "name": "extraData", "type": "bytes32" }, { "name": "packed", "type": "uint256" }],
-        "name": "dDeployBallot",
-        "outputs": [],
-        "payable": true,
-        "stateMutability": "payable",
-        "type": "function"
-    }]
-
-    const index = new web3.eth.Contract(deployBallotABI, indexAddress);
-    const deployBallot = index.methods.dDeployBallot(democHash, ballotHash, '0x00', extraData);
-
-    const txData = deployBallot.encodeABI()
-    console.log('txData :', txData);
-
-    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
-    const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
+    const txData = index.methods.dDeployBallot(democHash, ballotHash, '0x00', extraData).encodeABI();
+    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d'; //'0x1233832f5Ba901205474A0b2F407da6666aBfb08';
 
     const tx = {
         data: txData,
@@ -284,6 +269,7 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
         gas: 500000
     }
 
+    // Sign and send TX
     const signedTx:any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey);
     console.log('signedTx :', signedTx);
     const { rawTransaction } = signedTx;
