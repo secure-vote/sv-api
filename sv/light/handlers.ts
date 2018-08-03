@@ -11,11 +11,11 @@ import * as EthAbi from 'ethjs-abi'
 import * as EthSign from 'ethjs-signer'
 import * as sha256 from 'sha256'
 
+import { cleanEthHex } from 'sv-lib/lib/utils';
 import { getNetwork } from 'sv-lib/lib/const'
 import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight } from 'sv-lib/lib/light';
 import { verifySignedBallotForProxy, mkPacked, mkSubmissionBits, flags } from 'sv-lib/lib/ballotBox'
 import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
-const btoa = require('btoa')
 import axios from 'axios'
 const Web3:any = require('web3')
 
@@ -27,19 +27,87 @@ const ProxyVoteInputRT = t.type({
     democHash: Bytes32RT,
     extra: HexStringRT,
     proxyReq: t.tuple([Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT, Bytes32RT]),
-    ballotId: Bytes32RT
+    ballotId: Bytes32RT,
+    netConf: t.any
 });
 type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
 
 const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
+    const {democHash, extra, proxyReq, ballotId, netConf} = event
+
+    const { httpProvider, unsafeEd25519DelegationAddr } = netConf;
+
     const {verified, address} = verifySignedBallotForProxy(event)
 
-    // sanity check vote
-    // - is the voter someone we expect? (note: need to account for delegates)
-    // - are the ballotId and democHash compatible?
-    // - will the tx succeed?
+    // // Check if delegation exists
+    const web3: any = new Web3(httpProvider);
+    console.log('web3 :', web3);
+    const getAllForAddressABI = [{ constant: true, inputs: [{ name: 'delAddress', type: 'address' }], name: 'getAllDelegatedToAddr', outputs: [{ name: 'pubKeys', type: 'bytes32[]' }], payable: false, stateMutability: 'view', type: 'function' }];
+    const delegationCheck = new web3.eth.Contract(getAllForAddressABI, unsafeEd25519DelegationAddr);
+    const delegations = await delegationCheck.methods.getAllDelegatedToAddr(address).call()
+    console.log('delegations :', delegations);
 
-    return resp200({txid: '0x-not-done-yet', address})
+    const delegationsExist = (delegations.length > 0)
+    console.log('delegationsExist :', delegationsExist);
+
+    if (!delegationsExist) {
+        return errResp(`No delegations exist for this address :${address}`)
+    }
+
+    const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8)
+    console.log('bbFarmNamespace :', bbFarmNamespace);
+    const ballotIdLookup = cleanEthHex(ballotId).slice(8);
+    console.log('ballotIdLookup :', ballotIdLookup);
+
+    // Need to
+
+
+    // Does delegation exist? - TODO account for delegations here
+    const submitProxyVoteABI = [{"constant": false,"inputs": [{ "name": "proxyReq", "type": "bytes32[5]" }, { "name": "extra", "type": "bytes" }],"name": "submitProxyVote","outputs": [],"payable": false,"stateMutability": "nonpayable","type": "function"}]
+    const bbFarmAddress = "0x8384AD2bd15A80c15ccE6B5830a9324442853899"
+    const bbFarmContract = new web3.eth.Contract(submitProxyVoteABI, bbFarmAddress)
+    const submitProxyVote = bbFarmContract.methods.submitProxyVote(proxyReq, extra)
+
+    // - will the tx succeed?
+    const gasEstimate = await submitProxyVote.estimateGas()
+        .then(gas => {return gas})
+        .catch(error => {
+            return new Error('Unable to estimate gas, transaction will fail')
+        })
+
+    if (gasEstimate instanceof Error) {
+        return errResp('Unable to estimate gas, this means the transaction will fail')
+    }
+
+    console.log('gasEstimate :', gasEstimate);
+    const txData = submitProxyVote.encodeABI()
+    console.log('txData :', txData);
+
+
+    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d'; //'0x1233832f5Ba901205474A0b2F407da6666aBfb08';
+    const tx = { data: txData, to: bbFarmAddress, gas: gasEstimate };
+    console.log('tx :', tx);
+
+    // Sign and send TX
+    const signedTx: any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey);
+    console.log('signedTx :', signedTx);
+    const { rawTransaction } = signedTx;
+    console.log('rawTransaction :', rawTransaction);
+
+    const txResponse = await web3.eth.sendSignedTransaction(rawTransaction)
+        .on('transactionHash', function (txHash) { return resp200({tx: txHash}) })
+        .then(r => {
+            console.log('Sending signed transaction was successful. Response:', r)
+            return resp200(r.transactionHash)
+        })
+        // .once('transactionHash', hash => { return resp200(hash) })
+        // .on('error', e => { return errResp(e) })
+        .catch(e => { return errResp("Transaction failed") });
+
+    // - are the ballotId and democHash compatible?
+
+
+    return txResponse;
 }
 export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVoteInputRT)
 
@@ -275,13 +343,16 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const { rawTransaction } = signedTx;
     console.log('rawTransaction :', rawTransaction);
 
-    return await web3.eth.sendSignedTransaction(rawTransaction)
+    const txResponse = await web3.eth.sendSignedTransaction(rawTransaction)
+        .on('transactionHash', function(txHash) {console.log('Got transaction hash', txHash)})
         .then (r => {
             console.log('Sending signed transaction was successful. Response:', r)
             return resp200(r.transactionHash)
         })
         // .once('transactionHash', hash => { return resp200(hash) })
         // .on('error', e => { return errResp(e) })
-        .catch(e => { return errResp(e) });
+        .catch(e => { return errResp("Transaction failed") });
+
+    return txResponse
 }
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
