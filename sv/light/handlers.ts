@@ -13,8 +13,8 @@ import * as sha256 from 'sha256'
 
 import { cleanEthHex } from 'sv-lib/lib/utils';
 import { getNetwork } from 'sv-lib/lib/const'
-import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight, getSingularCleanAbi } from 'sv-lib/lib/light';
-import { verifySignedBallotForProxy, mkPacked, mkSubmissionBits, flags } from 'sv-lib/lib/ballotBox'
+import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight, getSingularCleanAbi, isEd25519SignedBallotValid } from 'sv-lib/lib/light';
+import { verifySignedBallotForProxy, mkPacked, mkSubmissionBits, flags, deployBallotSpec } from 'sv-lib/lib/ballotBox';
 import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
 import axios from 'axios'
 const Web3:any = require('web3')
@@ -43,13 +43,27 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
 
     // Initialise web3 and check for delegations
     const web3 = new Web3(httpProvider);
-    const getAllForAddressABI = getSingularCleanAbi('UnsafeEd25519DelegationAbi', 'getAllDelegatedToAddr');
+    // const getAllForAddressABI = getSingularCleanAbi('UnsafeEd25519DelegationAbi', 'getAllDelegatedToAddr');v
+    const getAllForAddressABI = [{
+        "constant": true,
+        "inputs": [{ "name": "delAddress", "type": "address" }],
+        "name": "getAllDelegatedToAddr",
+        "outputs": [{ "name": "pubKeys", "type": "bytes32[]" }],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    }]
     const delegationCheck = new web3.eth.Contract(getAllForAddressABI, unsafeEd25519DelegationAddr);
     const delegations = await delegationCheck.methods.getAllDelegatedToAddr(address).call()
-    if (delegations.length > 0) { return errResp(`No delegations exist for this address :${address}`) }
+    const delegationsExist = (delegations.length > 0)
+
+
+    if (!delegationsExist) {
+        return errResp(`No delegations exist for this address :${address}`);
+    }
 
     // TODO - Check the namespace and
-    const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8)
+    const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8);
     console.log('bbFarmNamespace :', bbFarmNamespace);
     const ballotIdLookup = cleanEthHex(ballotId).slice(8);
     console.log('ballotIdLookup :', ballotIdLookup);
@@ -161,6 +175,7 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     const ethTxCount = await eth.getTransactionCount(testingAddress).catch(e => {
         return errResp(e);
     });
+
     const dynamoDb = new doc.DynamoDB();
 
     const getDbNonceData = (address: string) => {
@@ -266,33 +281,9 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const netConf = getNetwork(network[0], network[1]);
     const { httpProvider, archivePushUrl, indexEnsName, ensResolver } = netConf
 
+    if (!isEd25519SignedBallotValid(ballotSpec)) { return errResp('Signature is not valid') }
 
-    // TODO - Offload the below to SV Lib once it has been updated
-    // if (!isEd25519SignedBallotValid(ballotSpec)) { return errResp('Signature is not valid') }
-        const { signature, proposerPk }  = JSON.parse(ballotSpec).subgroupInner;
-        const placeholderBallotSpec = ballotSpec.replace(signature, '**SIG_1**')
-        console.log('placeholderBallotSpec :', placeholderBallotSpec);
-
-        const isValid = ed25519DelegationIsValid(placeholderBallotSpec, proposerPk, signature);
-        if (!isValid) { return errResp('Signature is not valid') }
-    // END TODO
-
-    // TODO - Offload the below to SV Lib
-    // const ballotHash = await deployBallotSpec(archivePushUrl, ballotSpec);
-    const ballotHash = `0x${sha256(ballotSpec)}`
-    console.log('ballotHash :', ballotHash);
-    const ballotBase64 = Buffer.from(ballotSpec).toString('base64');
-    const requestData = { ballotBase64: ballotBase64, assertSpecHash: ballotHash }
-    const requestHeaders = { 'Content-Type': 'application/json', 'x-api-key': 'UmNrB7cifZ2N1LlnyM4RXK1xuK2VpIQaamgmlSBb' }
-    const response: any = await axios.post(
-        archivePushUrl,
-        requestData,
-        {
-            headers: requestHeaders
-        }
-    ).catch(error => { return error });
-    if (response.data !== ballotHash) { return errResp('Invalid response from ballot archive') }
-    // END TODO
+    const ballotHash = await deployBallotSpec(archivePushUrl, ballotSpec);
 
     // Get additional data + etc
     // TODO - simplify this once sv-lib is updated
