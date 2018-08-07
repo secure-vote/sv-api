@@ -23,6 +23,72 @@ import * as websocket from 'websocket'  //workaround for build issue https://git
 import 'source-map-support/register'  // as above
 
 
+/**
+ * Takes a transaction object, determines the correct nonce to use and reserves it in the nonce DB
+ * @param web3 instance
+ * @param dynamoDb
+ * @param tx
+ * @param publishAddress
+ * @returns {object} txWithNonce
+ */
+const determineAndReserveNonce = async (web3, dynamoDb, tx, publishAddress) => {
+    const dbReqParams = {
+        TableName: 'address_nonces',
+        KeyConditionExpression: 'publicAddress = :publicAddress',
+        ConsistentRead: true,
+        ExpressionAttributeValues: {
+            ':publicAddress': publishAddress,
+        },
+        ScanIndexForward: false,
+        Limit: 10
+    }
+
+    const dbData = await dynamoDb.query(dbReqParams).promise();
+    console.log('dbData :', dbData);
+    const highestDbNonce = dbData.Items[0];
+
+    const ethNonce = await web3.eth.getTransactionCount(publishAddress);
+    console.log('ethNonce :', ethNonce);
+
+    const _nextNonce = highestDbNonce.nonce + 1;
+    const nonceToUse = parseInt(_nextNonce < ethNonce ? ethNonce : _nextNonce)
+    console.log('nonceToUse :', nonceToUse);
+
+    const txWithNonce = tx
+    txWithNonce.nonce = nonceToUse
+
+    const reserveNonceParams = {
+        TableName: 'address_nonces',
+        Item: {
+            publicAddress: publishAddress,
+            nonce: nonceToUse,
+            txHash: 'reserved',
+            tx: txWithNonce
+        }
+    };
+    const _reserveNonce = await dynamoDb.putItem(reserveNonceParams).promise();
+
+    return txWithNonce
+}
+
+const updateNonceTxHash = async (dynamoDb, tx, txHash, publishAddress) => {
+    const { nonce } = tx
+    console.log('Updating nonce tx hash', typeof nonce, nonce)
+    const reserveNonceParams = {
+        TableName: 'address_nonces',
+        Item: {
+            publicAddress: publishAddress,
+            nonce: parseInt(nonce),
+            txHash: txHash,
+            tx: tx
+        }
+    };
+
+    const _updatedNonce = await dynamoDb.putItem(reserveNonceParams).promise();
+    return _updatedNonce;
+}
+
+
 const ProxyVoteInputRT = t.type({
     democHash: Bytes32RT,
     extra: HexStringRT,
@@ -84,33 +150,24 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     const tx = { data: txData, to: bbFarmAddress, gas: gasEstimate };
     console.log('tx :', tx);
 
+    const dynamoDb = new doc.DynamoDB();
+    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    console.log('txWithNonce :', txWithNonce);
+
     // Sign and send TX
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d'; // Note, this resolves to '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
-    const signedTx: any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey);
+    const signedTx: any = await web3.eth.accounts.signTransaction(txWithNonce, testingPrivateKey);
     const { rawTransaction } = signedTx;
     console.log('rawTransaction :', rawTransaction);
 
     // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
     const eth = new Eth(new Eth.HttpProvider(httpProvider));
     const txId = await eth.sendRawTransaction(rawTransaction);
+    console.log('txId :', txId);
+
+    await updateNonceTxHash(dynamoDb, txWithNonce, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+
     return resp200({txid: txId})
-
-
-    // // return a promise so we can resolve as soon as we get the transaction hash
-    // let sendPromi;
-    // const txidResp = await new Promise((res, rej) => {
-    //     sendPromi = web3.eth.sendSignedTransaction(rawTransaction)
-    //         .once('transactionHash', function (txHash) {
-    //             console.log('Received transaction hash', txHash)
-    //             res(resp200({ txid: txHash }))
-    //         })
-    //         .then(r => {
-    //             console.log('Sending signed transaction was successful. Response:', r)
-    //             res(resp200({ txid: r.transactionHash }))
-    //         })
-    //         .catch(e => { res(errResp("Transaction failed")) });
-    // }) as Promise<GenericResponse>
-    // return txidResp;
 }
 export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVoteInputRT)
 
@@ -124,10 +181,10 @@ type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
 
 const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context) => {
     // Testing variables - These will live seperately in the future
-    const networkId = 42;
-    const chainId = 1;
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
     const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
+    const networkId = 42;
+    const chainId = 42;
     const testingGasPrice = 20000000000;
 
     const svConfig = await getNetwork(networkId, chainId);
