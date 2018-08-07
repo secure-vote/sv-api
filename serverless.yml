@@ -44,7 +44,7 @@ custom:
 functions:
   submitProxyVote:
     handler: sv/light/handlers.submitProxyVote
-    timeout: 10
+    timeout: 30
     events:
       - http:
           method: post

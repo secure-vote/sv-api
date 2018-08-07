@@ -1,5 +1,5 @@
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
-import { mkAsyncH, errResp, toJ, resp200, assertHaveParams, SvHandler } from './helpers';
+import { mkAsyncH, errResp, toJ, resp200, assertHaveParams, SvHandler, GenericResponse } from './helpers';
 import { isArray } from 'util';
 import * as t from 'io-ts'
 import { ThrowReporter } from 'io-ts/lib/ThrowReporter';
@@ -13,7 +13,7 @@ import * as sha256 from 'sha256'
 
 import { cleanEthHex } from 'sv-lib/lib/utils';
 import { getNetwork } from 'sv-lib/lib/const'
-import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight } from 'sv-lib/lib/light';
+import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight, getSingularCleanAbi } from 'sv-lib/lib/light';
 import { verifySignedBallotForProxy, mkPacked, mkSubmissionBits, flags } from 'sv-lib/lib/ballotBox'
 import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
 import axios from 'axios'
@@ -33,84 +33,72 @@ const ProxyVoteInputRT = t.type({
 type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
 
 const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
-    const {democHash, extra, proxyReq, ballotId, netConf} = event
-
+    // Extract what we need from the request
+    const {extra, proxyReq, ballotId, netConf} = event
     const { httpProvider, unsafeEd25519DelegationAddr } = netConf;
 
+    // Verify the signed ballot
     const {verified, address} = verifySignedBallotForProxy(event)
+    if (!verified) { return errResp('Signed ballot cannot be verified') }
 
-    // // Check if delegation exists
-    const web3: any = new Web3(httpProvider);
-    console.log('web3 :', web3);
-    const getAllForAddressABI = [{ constant: true, inputs: [{ name: 'delAddress', type: 'address' }], name: 'getAllDelegatedToAddr', outputs: [{ name: 'pubKeys', type: 'bytes32[]' }], payable: false, stateMutability: 'view', type: 'function' }];
+    // Initialise web3 and check for delegations
+    const web3 = new Web3(httpProvider);
+    const getAllForAddressABI = getSingularCleanAbi('UnsafeEd25519DelegationAbi', 'getAllDelegatedToAddr');
     const delegationCheck = new web3.eth.Contract(getAllForAddressABI, unsafeEd25519DelegationAddr);
     const delegations = await delegationCheck.methods.getAllDelegatedToAddr(address).call()
-    console.log('delegations :', delegations);
+    if (delegations.length > 0) { return errResp(`No delegations exist for this address :${address}`) }
 
-    const delegationsExist = (delegations.length > 0)
-    console.log('delegationsExist :', delegationsExist);
-
-    if (!delegationsExist) {
-        return errResp(`No delegations exist for this address :${address}`)
-    }
-
+    // TODO - Check the namespace and
     const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8)
     console.log('bbFarmNamespace :', bbFarmNamespace);
     const ballotIdLookup = cleanEthHex(ballotId).slice(8);
     console.log('ballotIdLookup :', ballotIdLookup);
 
-    // Need to
-
-
-    // Does delegation exist? - TODO account for delegations here
-    const submitProxyVoteABI = [{"constant": false,"inputs": [{ "name": "proxyReq", "type": "bytes32[5]" }, { "name": "extra", "type": "bytes" }],"name": "submitProxyVote","outputs": [],"payable": false,"stateMutability": "nonpayable","type": "function"}]
-    const bbFarmAddress = "0x8384AD2bd15A80c15ccE6B5830a9324442853899"
+    // Initialise the contract for submitting the proxy vote
+    const submitProxyVoteABI = getSingularCleanAbi('BBFarmAbi', 'submitProxyVote')
+    const bbFarmAddress = "0x8384AD2bd15A80c15ccE6B5830a9324442853899" // TODO - this needs to be based on the bbFarmNamespace
     const bbFarmContract = new web3.eth.Contract(submitProxyVoteABI, bbFarmAddress)
     const submitProxyVote = bbFarmContract.methods.submitProxyVote(proxyReq, extra)
 
-    // - will the tx succeed?
-    const gasEstimate = await submitProxyVote.estimateGas()
-        .then(gas => {return gas})
-        .catch(error => {
-            return new Error('Unable to estimate gas, transaction will fail')
-        })
-
-    if (gasEstimate instanceof Error) {
-        return errResp('Unable to estimate gas, this means the transaction will fail')
-    }
-
+    // Estimate gas - by estimating the gas, we can determine if the transaction will fail
+    const gasEstimate = await submitProxyVote.estimateGas().then(gas => {return gas}).catch(error => {return error})
     console.log('gasEstimate :', gasEstimate);
+    if (gasEstimate instanceof Error) {return errResp('Unable to estimate gas, this means the transaction will fail')}
+
+    // Generate the transaction data and create the transaction object ready for signing
     const txData = submitProxyVote.encodeABI()
-    console.log('txData :', txData);
-
-
-    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d'; //'0x1233832f5Ba901205474A0b2F407da6666aBfb08';
     const tx = { data: txData, to: bbFarmAddress, gas: gasEstimate };
     console.log('tx :', tx);
 
     // Sign and send TX
+    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d'; // Note, this resolves to '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
     const signedTx: any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey);
-    console.log('signedTx :', signedTx);
     const { rawTransaction } = signedTx;
     console.log('rawTransaction :', rawTransaction);
 
-    const txResponse = await web3.eth.sendSignedTransaction(rawTransaction)
-        .on('transactionHash', function (txHash) { return resp200({tx: txHash}) })
-        .then(r => {
-            console.log('Sending signed transaction was successful. Response:', r)
-            return resp200(r.transactionHash)
-        })
-        // .once('transactionHash', hash => { return resp200(hash) })
-        // .on('error', e => { return errResp(e) })
-        .catch(e => { return errResp("Transaction failed") });
-
-    // - are the ballotId and democHash compatible?
+    // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
+    const eth = new Eth(new Eth.HttpProvider(httpProvider));
+    const txId = await eth.sendRawTransaction(rawTransaction);
+    return resp200({txid: txId})
 
 
-    return txResponse;
+    // // return a promise so we can resolve as soon as we get the transaction hash
+    // let sendPromi;
+    // const txidResp = await new Promise((res, rej) => {
+    //     sendPromi = web3.eth.sendSignedTransaction(rawTransaction)
+    //         .once('transactionHash', function (txHash) {
+    //             console.log('Received transaction hash', txHash)
+    //             res(resp200({ txid: txHash }))
+    //         })
+    //         .then(r => {
+    //             console.log('Sending signed transaction was successful. Response:', r)
+    //             res(resp200({ txid: r.transactionHash }))
+    //         })
+    //         .catch(e => { res(errResp("Transaction failed")) });
+    // }) as Promise<GenericResponse>
+    // return txidResp;
 }
 export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVoteInputRT)
-
 
 const Ed25519DelegationReqRT = t.type({
     signature: Bytes64RT,
@@ -263,18 +251,18 @@ const ProxyProposalInputRT = t.type({
     democHash: t.string,
     startTime: t.Integer,
     endTime: t.Integer,
-    networkId: t.string
+    networkName: t.string
 })
 type ProxyProposalInput = t.TypeOf<typeof ProxyProposalInputRT>
 
 
 const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     // Check contents of ballot
-    const { ballotSpec, democHash, startTime, endTime, networkId } = event;
-    console.log(ballotSpec, democHash, startTime, endTime, networkId);
+    const { ballotSpec, democHash, startTime, endTime, networkName } = event;
+    console.log(ballotSpec, democHash, startTime, endTime, networkName);
 
     // This is hard coded at the moment, we will use the test net for anything that isn't declared as mainnet
-    const network = (networkId === 'mainnet') ? [1, 1] : [42, 42]
+    const network = (networkName === 'mainnet') ? [1, 1] : [42, 42]
     const netConf = getNetwork(network[0], network[1]);
     const { httpProvider, archivePushUrl, indexEnsName, ensResolver } = netConf
 
