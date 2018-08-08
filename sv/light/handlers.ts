@@ -1,23 +1,16 @@
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
 import { mkAsyncH, errResp, toJ, resp200, assertHaveParams, SvHandler, GenericResponse } from './helpers';
-import { isArray } from 'util';
 import * as t from 'io-ts'
-import { ThrowReporter } from 'io-ts/lib/ThrowReporter';
-
 import * as doc from 'dynamodb-doc';
 import * as StellarBase from 'stellar-base';
 import * as Eth from 'ethjs'
-import * as EthAbi from 'ethjs-abi'
-import * as EthSign from 'ethjs-signer'
-import * as sha256 from 'sha256'
 
 import { cleanEthHex } from 'sv-lib/lib/utils';
 import { getNetwork } from 'sv-lib/lib/const'
 import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight, getSingularCleanAbi, isEd25519SignedBallotValid } from 'sv-lib/lib/light';
 import { verifySignedBallotForProxy, mkPacked, mkSubmissionBits, flags, deployBallotSpec } from 'sv-lib/lib/ballotBox';
 import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
-import axios from 'axios'
-const Web3:any = require('web3')
+const Web3 = require('web3')
 
 import * as websocket from 'websocket'  //workaround for build issue https://github.com/serverless-heaven/serverless-webpack/issues/223
 import 'source-map-support/register'  // as above
@@ -91,17 +84,18 @@ const updateNonceTxHash = async (dynamoDb, tx, txHash, publishAddress) => {
 
 const prepareTransaction = async (methodWithArgs, toAddress) => {
     const gasEstimate = await methodWithArgs.estimateGas().then(gas => { return gas }).catch(error => { return error })
+    console.log('gasEstimate :', gasEstimate);
     if (gasEstimate instanceof Error) {
         return new Error('Unable to estimate gas')
     }
 
-    const txData = methodWithArgs.encodeABI()
-
-    return {
+    const tx = {
         to: toAddress,
-        data: txData,
-        gas: gasEstimate
+        gas: gasEstimate,
+        data: methodWithArgs.encodeABI()
     }
+
+    return tx
 }
 
 
@@ -121,6 +115,8 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     // Extract what we need from the request
     const {extra, proxyReq, ballotId, netConf} = event
     const { httpProvider, unsafeEd25519DelegationAddr } = netConf;
+    console.log('proxyReq :', typeof proxyReq, proxyReq);
+    console.log('extra :', extra);
 
     // Verify the signed ballot
     const {verified, address} = verifySignedBallotForProxy(event)
@@ -144,15 +140,25 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     console.log('bbFarmNamespace :', bbFarmNamespace);
     const ballotIdLookup = cleanEthHex(ballotId).slice(8);
     console.log('ballotIdLookup :', ballotIdLookup);
-    const bbFarmAddress = "0x8384AD2bd15A80c15ccE6B5830a9324442853899" // TODO - this needs to be based on the bbFarmNamespace
 
-    // Initialise the contract for submitting the proxy vote
-    const submitProxyVoteABI = getSingularCleanAbi('BBFarmAbi', 'submitProxyVote')
-
+    const submitProxyVoteABI = [{ constant: false, inputs: [{ name: 'proxyReq', type: 'bytes32[5]' }, { name: 'extra', type: 'bytes' }], name: 'submitProxyVote', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
+    const bbFarmAddress = "0x8384AD2bd15A80c15ccE6B5830a9324442853899"
     const bbFarmContract = new web3.eth.Contract(submitProxyVoteABI, bbFarmAddress)
     const submitProxyVote = bbFarmContract.methods.submitProxyVote(proxyReq, extra)
+    console.log('submitProxyVote :', submitProxyVote);
 
-    const tx = await prepareTransaction(submitProxyVote, bbFarmAddress)
+    const gasEstimate = await submitProxyVote.estimateGas()
+    console.log('gasEstimate :', gasEstimate);
+
+    if (gasEstimate instanceof Error) {
+        return errResp('Unable to estimate gas, this means the transaction will fail')
+    }
+
+    const tx = {
+        to: bbFarmAddress,
+        gas: gasEstimate,
+        data: submitProxyVote.encodeABI()
+    };
     console.log('tx :', tx);
 
     const dynamoDb = new doc.DynamoDB();
@@ -213,7 +219,6 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     // Split the 64 bytes of the signature into an array containging 2x t.string
     const sig1 = signature.substring(0, 66)
     const sig2 = `0x${signature.substring(66)}`
-
     console.log(`packed: ${packed}, hexPubKey: ${hexPubKey}, sig1: ${sig1}, sig2: ${sig2}`);
 
     // Use the API snippet to generate the function bytecode
@@ -225,17 +230,9 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     const delegationContract = new web3.eth.Contract(addUntrustedSelfDelegationABI, unsafeEd25519DelegationAddr)
     const addUntrustedSelfDelegation = delegationContract.methods.addUntrustedSelfDelegation(packed, hexPubKey, [sig1, sig2])
 
-    const gasEstimate = await addUntrustedSelfDelegation.estimateGas().then(gas => {return gas}).catch(error => { return error })
-    console.log('gasEstimate :', gasEstimate);
-    if (gasEstimate instanceof Error) { return errResp('Unable to estimate gas, this means the transaction will fail') }
-
-    const txData = addUntrustedSelfDelegation.encodeABI();
-    const tx = {
-        data: txData,
-        to: unsafeEd25519DelegationAddr,
-        gas: gasEstimate
-    }
+    const tx = prepareTransaction(addUntrustedSelfDelegation, unsafeEd25519DelegationAddr)
     console.log('tx :', tx);
+
 
     const dynamoDb = new doc.DynamoDB();
     const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
@@ -268,66 +265,87 @@ type ProxyProposalInput = t.TypeOf<typeof ProxyProposalInputRT>
 
 
 const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
+    // Testing variables
+    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
+    const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
+
     // Check contents of ballot
     const { ballotSpec, democHash, startTime, endTime, networkName } = event;
     console.log(ballotSpec, democHash, startTime, endTime, networkName);
 
     // This is hard coded at the moment, we will use the test net for anything that isn't declared as mainnet
-    const network = (networkName === 'mainnet') ? [1, 1] : [42, 42]
+    const network = networkName === 'mainnet' ? [1, 1] : [42, 42];
     const netConf = getNetwork(network[0], network[1]);
-    const { httpProvider, archivePushUrl, indexEnsName, ensResolver } = netConf
+    const { httpProvider, archivePushUrl } = netConf;
 
-    if (!isEd25519SignedBallotValid(ballotSpec)) { return errResp('Signature is not valid') }
+    if (!isEd25519SignedBallotValid(ballotSpec)) {
+        return errResp('Signature is not valid');
+    }
 
     const ballotHash = await deployBallotSpec(archivePushUrl, ballotSpec);
+    console.log('ballotHash :', ballotHash);
 
-    // Get additional data + etc
-    // TODO - simplify this once sv-lib is updated
-    // const { index } = svNetwork
-        const web3:any = new Web3(httpProvider);
-        const indexAddress = '0xcad76ee606fb794dd1da2c7e3c8663f648ba431d';
-        const deployBallotABI = [{
-            "constant": false,
-            "inputs": [{ "name": "democHash", "type": "bytes32" }, { "name": "specHash", "type": "bytes32" }, { "name": "extraData", "type": "bytes32" }, { "name": "packed", "type": "uint256" }],
-            "name": "dDeployBallot",
-            "outputs": [],
-            "payable": true,
-            "stateMutability": "payable",
-            "type": "function"
-        }]
-        const index = new web3.eth.Contract(deployBallotABI, indexAddress);
-    // END TODO
+    // TODO - simplify this once sv-lib is updated... const { index } = svNetwork
+    const web3: any = new Web3(httpProvider);
+    const indexAddress = '0xcad76ee606fb794dd1da2c7e3c8663f648ba431d';
+    const deployBallotABI = getSingularCleanAbi('IndexAbi', 'dDeployBallot');
+    console.log('deployBallotABI :', deployBallotABI);
+
+    const _deployBallotABI = [{ constant: false, inputs: [{ name: 'democHash', type: 'bytes32' }, { name: 'specHash', type: 'bytes32' }, { name: 'extraData', type: 'bytes32' }, { name: 'packed', type: 'uint256' }], name: 'dDeployBallot', outputs: [], payable: true, stateMutability: 'payable', type: 'function' }];
+
+    const index = new web3.eth.Contract(_deployBallotABI, indexAddress);
 
     // Prepare deploy ballot function arguments
     const { USE_ETH, USE_SIGNED, USE_NO_ENC, USE_ENC, IS_BINDING, IS_OFFICIAL, USE_TESTING } = flags;
     const submissionBits = mkSubmissionBits(USE_ETH, USE_NO_ENC);
-    const extraData = mkPacked(startTime, endTime, submissionBits);
+    console.log('submissionBits :', submissionBits);
+    console.log('startTime :', startTime);
+    console.log('endTime :', endTime);
+    const extraData = mkPacked(startTime, endTime, submissionBits).toString()
+    console.log('extraData :', extraData);
 
-    const txData = index.methods.dDeployBallot(democHash, ballotHash, '0x00', extraData).encodeABI();
-    const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d'; //'0x1233832f5Ba901205474A0b2F407da6666aBfb08';
+    const dDeployBallot = index.methods.dDeployBallot(democHash, ballotHash, '0x00', extraData);
+    console.log('dDeployBallot :', dDeployBallot);
+    const txData = dDeployBallot.encodeABI();
+
+    // const gasEstimate = await dDeployBallot.estimateGas().then(gas => { return gas; }).catch(error => { return error; });
+    // console.log('gasEstimate :', gasEstimate);
+    // if (gasEstimate instanceof Error) {
+    //     return errResp('Unable to estimate gas');
+    // }
 
     const tx = {
-        data: txData,
         to: indexAddress,
-        gas: 500000
-    }
+        gas: 500000, // Adding gas manually right now because the estimate gas function seems to revert (possibly on the onlyDemocEditor?)
+        data: txData
+    };
+    console.log('tx :', tx);
+
+    const dynamoDb = new doc.DynamoDB();
+    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    console.log('txWithNonce :', txWithNonce);
 
     // Sign and send TX
-    const signedTx:any = await web3.eth.accounts.signTransaction(tx, testingPrivateKey);
-    console.log('signedTx :', signedTx);
+    const signedTx: any = await web3.eth.accounts.signTransaction(txWithNonce, testingPrivateKey);
     const { rawTransaction } = signedTx;
     console.log('rawTransaction :', rawTransaction);
 
-    const txResponse = await web3.eth.sendSignedTransaction(rawTransaction)
-        .on('transactionHash', function(txHash) {console.log('Got transaction hash', txHash)})
-        .then (r => {
-            console.log('Sending signed transaction was successful. Response:', r)
-            return resp200(r.transactionHash)
-        })
-        // .once('transactionHash', hash => { return resp200(hash) })
-        // .on('error', e => { return errResp(e) })
-        .catch(e => { return errResp("Transaction failed") });
+    // return await web3.eth.sendSignedTransaction(rawTransaction)
+    //     .then(r => {
+    //         console.log('Sending signed transaction was successful. Response:', r)
+    //         return resp200(r.transactionHash)
+    //     })
+    //     // .once('transactionHash', hash => { return resp200(hash) })
+    //     // .on('error', e => { return errResp(e) })
+    //     .catch(e => { return errResp(e) });
 
-    return txResponse
-}
+    // // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
+    const eth = new Eth(new Eth.HttpProvider(httpProvider));
+    const txId = await eth.sendRawTransaction(rawTransaction);
+    console.log('txId :', txId);
+
+    await updateNonceTxHash(dynamoDb, txWithNonce, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+
+    return resp200({ txid: txId });
+};
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
