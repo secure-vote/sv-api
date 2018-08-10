@@ -7,7 +7,7 @@ import * as Eth from 'ethjs'
 
 import { cleanEthHex } from 'sv-lib/lib/utils';
 import { getNetwork } from 'sv-lib/lib/const'
-import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight, getSingularCleanAbi, isEd25519SignedBallotValid } from 'sv-lib/lib/light';
+import { ed25519DelegationIsValid, createEd25519DelegationTransaction, initializeSvLight, getSingularCleanAbi, isEd25519SignedBallotValid, checkBallotHashGBallot } from 'sv-lib/lib/light';
 import { verifySignedBallotForProxy, mkPacked, mkSubmissionBits, flags, deployBallotSpec } from 'sv-lib/lib/ballotBox';
 import { Bytes32, HexString, Bytes64, Bytes32RT, HexStringRT, Bytes64RT } from 'sv-lib/lib/runtimeTypes';
 const Web3 = require('web3')
@@ -16,6 +16,8 @@ import * as websocket from 'websocket'  //workaround for build issue https://git
 import 'source-map-support/register'  // as above
 import { SIGBREAK } from 'constants';
 
+let nonceReserveTime;
+let nonceUpdateTime;
 
 /**
  * Takes a transaction object, determines the correct nonce to use and reserves it in the nonce DB
@@ -26,6 +28,8 @@ import { SIGBREAK } from 'constants';
  * @returns {object} txWithNonce
  */
 const determineAndReserveNonce = async (web3, dynamoDb, tx, publishAddress) => {
+    nonceReserveTime = new Date().getTime();
+    console.log('Reserving the nonce', nonceReserveTime);
     const dbReqParams = {
         TableName: 'address_nonces',
         KeyConditionExpression: 'publicAddress = :publicAddress',
@@ -65,7 +69,7 @@ const determineAndReserveNonce = async (web3, dynamoDb, tx, publishAddress) => {
     return txWithNonce
 }
 
-const updateNonceTxHash = async (dynamoDb, tx, txHash, publishAddress) => {
+const updateNonceTxHash = async (dynamoDb, tx, signedTx, txHash, publishAddress) => {
     const { nonce } = tx
     console.log('Updating nonce tx hash', typeof nonce, nonce)
     const reserveNonceParams = {
@@ -74,11 +78,15 @@ const updateNonceTxHash = async (dynamoDb, tx, txHash, publishAddress) => {
             publicAddress: publishAddress,
             nonce: parseInt(nonce),
             txHash: txHash,
-            tx: tx
+            tx: tx,
+            signedTx: signedTx
         }
     };
 
     const _updatedNonce = await dynamoDb.putItem(reserveNonceParams).promise();
+    nonceUpdateTime = new Date().getTime();
+    console.log('Updated the nonce', nonceUpdateTime);
+    console.log(`Time between reserving and updating nonce is: ${(nonceUpdateTime - nonceReserveTime) / 1000} seconds `);
     return _updatedNonce;
 }
 
@@ -162,11 +170,12 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     console.log('tx :', tx);
 
     const dynamoDb = new doc.DynamoDB();
-    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, testingAddress);
     console.log('txWithNonce :', txWithNonce);
 
     // Sign and send TX
     const signedTx: any = await web3.eth.accounts.signTransaction(txWithNonce, testingPrivateKey);
+    console.log('signedTx :', signedTx);
     const { rawTransaction } = signedTx;
     console.log('rawTransaction :', rawTransaction);
 
@@ -175,9 +184,9 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     const txId = await eth.sendRawTransaction(rawTransaction);
     console.log('txId :', txId);
 
-    await updateNonceTxHash(dynamoDb, txWithNonce, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    await updateNonceTxHash(dynamoDb, tx, signedTx, txId, testingAddress)
 
-    return resp200({txid: txId})
+    return resp200({txId: txId})
 }
 export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVoteInputRT)
 
@@ -247,7 +256,7 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     const txId = await eth.sendRawTransaction(rawTransaction);
     console.log('txId :', txId);
 
-    await updateNonceTxHash(dynamoDb, txWithNonce, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    await updateNonceTxHash(dynamoDb, tx, signedTx, txId, testingAddress)
 
     return resp200({ txid: txId, from: publickey, to: packed });
 }
@@ -301,10 +310,13 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     console.log('submissionBits :', submissionBits);
     console.log('startTime :', startTime);
     console.log('endTime :', endTime);
-    const extraData = mkPacked(startTime, endTime, submissionBits).toString()
-    console.log('extraData :', extraData);
+    const packed = mkPacked(startTime, endTime, submissionBits).toString()
+    console.log('packed :', packed);
 
-    const dDeployBallot = index.methods.dDeployBallot(democHash, ballotHash, '0x00', extraData);
+    // Using the first byte of extra data to use this BB farm ID
+    const extraData = '0x01'
+
+    const dDeployBallot = index.methods.dDeployBallot(democHash, ballotHash, '0x00', packed);
     console.log('dDeployBallot :', dDeployBallot);
     const txData = dDeployBallot.encodeABI();
 
@@ -344,8 +356,8 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const txId = await eth.sendRawTransaction(rawTransaction);
     console.log('txId :', txId);
 
-    await updateNonceTxHash(dynamoDb, txWithNonce, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    await updateNonceTxHash(dynamoDb, txWithNonce, signedTx, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08')
 
-    return resp200({ txid: txId });
+    return resp200({ txId: txId });
 };
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
