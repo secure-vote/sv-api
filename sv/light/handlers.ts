@@ -126,8 +126,8 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
     const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
 
-    // Extract what we need from the request
-    const {extra, proxyReq, ballotId, netConf} = event
+    // Destructure the variables that we need from the request
+    const { extra, proxyReq, ballotId, netConf } = event
     const { httpProvider, unsafeEd25519DelegationAddr } = netConf;
     console.log('proxyReq :', typeof proxyReq, proxyReq);
     console.log('extra :', extra);
@@ -144,80 +144,74 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     const delegations = await delegationCheck.methods.getAllDelegatedToAddr(address).call()
     const delegationsExist = (delegations.length > 0)
 
-
+    // If no delegations exist, return error response
     if (!delegationsExist) {
         return errResp(`No delegations exist for this address :${address}`);
     }
 
-    // TODO - Check the namespace and link to appropriate bbfarm address
-    const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8);
-    console.log('bbFarmNamespace :', bbFarmNamespace);
-    const ballotIdLookup = cleanEthHex(ballotId).slice(8);
-    console.log('ballotIdLookup :', ballotIdLookup);
-
     // Get bbFarmAddress from namespace
     const getBBFarmABI = [{ "constant": true, "inputs": [{ "name": "bbFarmId", "type": "uint8" }], "name": "getBBFarm", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }]
-    const indexAddress = '0xcad76eE606FB794dD1DA2c7E3C8663F648ba431d'; // This will come from svNetwork in future
+    const indexAddress = '0xcad76eE606FB794dD1DA2c7E3C8663F648ba431d'; // TODO - svNetwork in sv-lib will make this redundant
     const indexContract = new web3.eth.Contract(getBBFarmABI, indexAddress)
-    console.log('indexContract :', indexContract);
+    const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8);
+    console.log('bbFarmNamespace :', bbFarmNamespace);
     const bbFarmAddress = await indexContract.methods.getBBFarm(`0x${bbFarmNamespace}`).call()
     console.log('bbFarmAddress :', bbFarmAddress);
 
     // Get the voting network
+    // TODO, get this from sv-lib
     const getVotingNetABI = [{"constant":true,"inputs":[],"name":"getVotingNetworkDetails","outputs":[{"name":"","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"}]
     const bbFarmContract = new web3.eth.Contract(getVotingNetABI, bbFarmAddress);
     const networkDetails = await bbFarmContract.methods.getVotingNetworkDetails().call();
 
+    // Explode foriegn network details
+    // TODO - use sv-lib for this
     const chainId = parseInt(networkDetails.slice(10,18));
     const networkId = parseInt(networkDetails.slice(18, 26));
     const remoteBBFarmAddress = '0x' + networkDetails.slice(26);
 
+    // Get the net conf and initialize variables of the bbfarm address
     const remoteNetConf = getNetwork(chainId, networkId);
     const remoteHttpProvider = remoteNetConf.httpProvider
     const remoteNetworkName = remoteNetConf.name
-    console.log('remoteHttpProvider :', remoteHttpProvider);
-
-    const nonceTrackerDB = `${remoteNetworkName}_${testingAddress}`;
-
     const remoteWeb3 = new Web3(remoteHttpProvider)
 
+    // Set up the contract to submit the proxy vote
+    // TODO - make this more robust with sv-lib
     const submitProxyVoteABI = [{ constant: false, inputs: [{ name: 'proxyReq', type: 'bytes32[5]' }, { name: 'extra', type: 'bytes' }], name: 'submitProxyVote', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
-    // const bbFarmAddress = "0x8384AD2bd15A80c15ccE6B5830a9324442853899"
     const remoteBBFarmContract = new remoteWeb3.eth.Contract(submitProxyVoteABI, remoteBBFarmAddress);
     const submitProxyVote = remoteBBFarmContract.methods.submitProxyVote(proxyReq, extra);
-
     const gasEstimate = await submitProxyVote.estimateGas()
-    console.log('gasEstimate :', gasEstimate);
-
     if (gasEstimate instanceof Error) {
         return errResp('Unable to estimate gas, this means the transaction will fail')
     }
 
-    const tx = {
-        to: remoteBBFarmAddress,
-        gas: gasEstimate,
-        data: submitProxyVote.encodeABI()
-    };
+    // Create the transaction object
+    const tx = { to: remoteBBFarmAddress, gas: gasEstimate, data: submitProxyVote.encodeABI() };
     console.log('tx :', tx);
 
+    // Check the nonce to use and reserve it
     const dynamoDb = new doc.DynamoDB();
+    const nonceTrackerDB = `${remoteNetworkName}_${testingAddress}`;
     const txWithNonce = await determineAndReserveNonce(remoteWeb3, dynamoDb, tx, testingAddress, nonceTrackerDB);
     console.log('txWithNonce :', txWithNonce);
 
-    // Sign and send TX
+    // Sign the transaction
     const signedTx: any = await remoteWeb3.eth.accounts.signTransaction(txWithNonce, testingPrivateKey);
     console.log('signedTx :', signedTx);
     const { rawTransaction } = signedTx;
-    console.log('rawTransaction :', rawTransaction);
 
     // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
     const eth = new Eth(new Eth.HttpProvider(remoteHttpProvider));
     const txId = await eth.sendRawTransaction(rawTransaction);
+    const txLink = `${remoteNetConf.etherscanLink}tx/${txId}`;
     console.log('txId :', txId);
 
+    // Update the nonce DB with the txId and transaction information
     await updateNonceTxHash(dynamoDb, tx, signedTx, txId, testingAddress, nonceTrackerDB)
 
-    return resp200({txId: txId})
+    // Return the txId and etherscan link
+    return resp200({txId, txLink})
 }
 export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVoteInputRT)
 
@@ -385,7 +379,6 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     // // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
     const eth = new Eth(new Eth.HttpProvider(httpProvider));
     const txId = await eth.sendRawTransaction(rawTransaction);
-    console.log('txId :', txId);
 
     await updateNonceTxHash(dynamoDb, txWithNonce, signedTx, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08', 'Kovan_0x1233832f5Ba901205474A0b2F407da6666aBfb08');
 
