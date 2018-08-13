@@ -22,7 +22,25 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-      Resource: "arn:aws:dynamodb:ap-southeast-2:040288997789:table/address_nonces"
+      Resource: "arn:aws:dynamodb:ap-southeast-2:040288997789:table/Ropsten_0x1233832f5Ba901205474A0b2F407da6666aBfb08"
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:ap-southeast-2:040288997789:table/Kovan_0x1233832f5Ba901205474A0b2F407da6666aBfb08"
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:ap-southeast-2:040288997789:table/Classic_0x1233832f5Ba901205474A0b2F407da6666aBfb08"
 
 package:
   include:
