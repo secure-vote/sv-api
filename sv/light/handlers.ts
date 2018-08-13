@@ -303,19 +303,21 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
     const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
 
-    // Check contents of ballot
+    // Destructure what we need from the request
     const { ballotSpec, democHash, startTime, endTime, networkName } = event;
     console.log(ballotSpec, democHash, startTime, endTime, networkName);
 
-    // This is hard coded at the moment, we will use the test net for anything that isn't declared as mainnet
-    const network = networkName === 'mainnet' ? [1, 1] : [42, 42];
-    const netConf = getNetwork(network[0], network[1]);
-    const { httpProvider, archivePushUrl } = netConf;
-
+    // First, we check the ballot spec to ensure the delegation is valid
     if (!isEd25519SignedBallotValid(ballotSpec)) {
         return errResp('Signature is not valid');
     }
 
+    // Setup the network variables we need for testnet vs mainnet
+    // This is hard coded at the moment, we will use the test net for anything that isn't declared as mainnet
+    const netConf = networkName === 'mainnet' ? getNetwork(1, 1) : getNetwork(42, 42)
+    const { httpProvider, archivePushUrl } = netConf;
+
+    // Deploy the ballotspec to IPFS and S3 backup
     const ballotHash = await deployBallotSpec(archivePushUrl, ballotSpec);
     console.log('ballotHash :', ballotHash);
 
@@ -326,27 +328,23 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     console.log('deployBallotABI :', deployBallotABI);
 
     const _deployBallotABI = [{ constant: false, inputs: [{ name: 'democHash', type: 'bytes32' }, { name: 'specHash', type: 'bytes32' }, { name: 'extraData', type: 'bytes32' }, { name: 'packed', type: 'uint256' }], name: 'dDeployBallot', outputs: [], payable: true, stateMutability: 'payable', type: 'function' }];
-
     const index = new web3.eth.Contract(_deployBallotABI, indexAddress);
 
     // Prepare deploy ballot function arguments
     const { USE_ETH, USE_SIGNED, USE_NO_ENC, USE_ENC, IS_BINDING, IS_OFFICIAL, USE_TESTING } = flags;
     const submissionBits = mkSubmissionBits(USE_ETH, USE_NO_ENC);
-    console.log('submissionBits :', submissionBits);
-    console.log('startTime :', startTime);
-    console.log('endTime :', endTime);
     const packed = mkPacked(startTime, endTime, submissionBits).toString()
-    console.log('packed :', packed);
+    console.log(`Submission bits: ${submissionBits}. Start time: ${startTime}. End time: ${endTime}.... Packed ${packed}`);
 
     // Using the first byte of extra data to use this BB farm ID
+    // TODO - Do this based on api call inputs?
     const extraData = '0x01'
 
+    // Set up the method and encode the tx data
     const dDeployBallot = index.methods.dDeployBallot(democHash, ballotHash, extraData, packed);
-    console.log('dDeployBallot :', dDeployBallot);
     const txData = dDeployBallot.encodeABI();
 
     // const gasEstimate = await dDeployBallot.estimateGas().then(gas => { return gas; }).catch(error => { return error; });
-    // console.log('gasEstimate :', gasEstimate);
     // if (gasEstimate instanceof Error) {
     //     return errResp('Unable to estimate gas');
     // }
@@ -359,7 +357,8 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     console.log('tx :', tx);
 
     const dynamoDb = new doc.DynamoDB();
-    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, '0x1233832f5Ba901205474A0b2F407da6666aBfb08', 'Kovan_0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    const nonceTrackerDB = `${netConf.name}_${testingAddress}`;
+    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, testingAddress, nonceTrackerDB);
     console.log('txWithNonce :', txWithNonce);
 
     // Sign and send TX
@@ -380,7 +379,7 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const eth = new Eth(new Eth.HttpProvider(httpProvider));
     const txId = await eth.sendRawTransaction(rawTransaction);
 
-    await updateNonceTxHash(dynamoDb, txWithNonce, signedTx, txId, '0x1233832f5Ba901205474A0b2F407da6666aBfb08', 'Kovan_0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    await updateNonceTxHash(dynamoDb, txWithNonce, signedTx, txId, testingAddress, nonceTrackerDB);
 
     return resp200({ txId: txId });
 };
