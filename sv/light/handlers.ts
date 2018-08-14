@@ -211,7 +211,7 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     await updateNonceTxHash(dynamoDb, tx, signedTx, txId, testingAddress, nonceTrackerDB)
 
     // Return the txId and etherscan link
-    return resp200({txId, txLink})
+    return resp200({txId, txLink, networkId, chainId})
 }
 export const submitProxyVote: Handler = mkAsyncH(submitProxyVoteInner, ProxyVoteInputRT)
 
