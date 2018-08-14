@@ -227,11 +227,14 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     // Testing variables - These will live seperately in the future
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
     const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
-    const networkId = 42;
-    const chainId = 42;
+    const networkName:string = 'testnet'
+
+    const network = networkName === 'mainnet'
+        ? { networkId: 1, chainId: 1 }
+        : { networkId: 42, chainId: 42 }
+    const netConf = getNetwork(network.networkId, network.chainId)
 
     // Unpack what we need - TODO update this so it is based on a networkName
-    const svConfig = await getNetwork(networkId, chainId);
     const { signature, publickey, packed } = event
 
     const isValidPublicKey = StellarBase.StrKey.isValidEd25519PublicKey(publickey)
@@ -256,7 +259,7 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     console.log(`packed: ${packed}, hexPubKey: ${hexPubKey}, sig1: ${sig1}, sig2: ${sig2}`);
 
     // Use the API snippet to generate the function bytecode
-    const { httpProvider, unsafeEd25519DelegationAddr } = svConfig;
+    const { httpProvider, unsafeEd25519DelegationAddr } = netConf;
     const addUntrustedSelfDelegationABI = [{ constant: false, inputs: [{ name: 'dlgtRequest', type: 'bytes32' }, { name: 'pubKey', type: 'bytes32' }, { name: 'signature', type: 'bytes32[2]' }], name: 'addUntrustedSelfDelegation', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
     // const inputByteCode = EthAbi.encodeMethod(addUntrustedSelfDelegationABI[0], [packed, hexPubKey, [sig1, sig2]]) // This was the method used when using Ethjs - keeping until web3 version is working
 
@@ -283,7 +286,7 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
 
     await updateNonceTxHash(dynamoDb, tx, signedTx, txId, testingAddress, 'Kovan_0x1233832f5Ba901205474A0b2F407da6666aBfb08');
 
-    return resp200({ txid: txId, from: publickey, to: packed });
+    return resp200({ txid: txId, from: publickey, to: packed, ...network });
 }
 export const submitEd25519Delegation: Handler = mkAsyncH(submitEd25519DelegationInner, Ed25519DelegationReqRT)
 
@@ -314,7 +317,10 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
 
     // Setup the network variables we need for testnet vs mainnet
     // This is hard coded at the moment, we will use the test net for anything that isn't declared as mainnet
-    const netConf = networkName === 'mainnet' ? getNetwork(1, 1) : getNetwork(42, 42)
+    const network = networkName === 'mainnet'
+        ? { networkId: 1, chainId: 1 }
+        : { networkId: 42, chainId: 42 }
+    const netConf = getNetwork(network.networkId, network.chainId)
     const { httpProvider, archivePushUrl } = netConf;
 
     // Deploy the ballotspec to IPFS and S3 backup
@@ -381,6 +387,6 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
 
     await updateNonceTxHash(dynamoDb, txWithNonce, signedTx, txId, testingAddress, nonceTrackerDB);
 
-    return resp200({ txId: txId });
+    return resp200({ txId, ...network });
 };
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
