@@ -14,3 +14,6 @@ swagger-docs.json
 .DS_Store
 
 pkg-docker
+
+#environment variables
+env-vars.json
