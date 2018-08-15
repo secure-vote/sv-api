@@ -96,23 +96,6 @@ const updateNonceTxHash = async (dynamoDb, tx, signedTx, txHash, publishAddress,
     return _updatedNonce;
 }
 
-const prepareTransaction = async (methodWithArgs, toAddress) => {
-    const gasEstimate = await methodWithArgs.estimateGas().then(gas => { return gas }).catch(error => { return error })
-    console.log('gasEstimate :', gasEstimate);
-    if (gasEstimate instanceof Error) {
-        return new Error('Unable to estimate gas')
-    }
-
-    const tx = {
-        to: toAddress,
-        gas: gasEstimate,
-        data: methodWithArgs.encodeABI()
-    }
-
-    return tx
-}
-
-
 const ProxyVoteInputRT = t.type({
     democHash: Bytes32RT,
     extra: HexStringRT,
@@ -120,7 +103,7 @@ const ProxyVoteInputRT = t.type({
     ballotId: Bytes32RT,
     netConf: t.any
 });
-type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>
+type ProxyVoteInput = t.TypeOf<typeof ProxyVoteInputRT>;
 
 const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
@@ -129,6 +112,8 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     // Destructure the variables that we need from the request
     const { extra, proxyReq, ballotId, netConf } = event
     const { httpProvider, unsafeEd25519DelegationAddr } = netConf;
+    const svNetwork = await initializeSvLight(netConf, {useWebsockets: false})
+    const { web3, index } = svNetwork
     console.log('proxyReq :', typeof proxyReq, proxyReq);
     console.log('extra :', extra);
 
@@ -137,7 +122,6 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     if (!verified) { return errResp('Signed ballot cannot be verified') }
 
     // Initialise web3 and check for delegations
-    const web3 = new Web3(httpProvider);
     // const getAllForAddressABI = getSingularCleanAbi('UnsafeEd25519DelegationAbi', 'getAllDelegatedToAddr'); // TODO once delegation abi is in this sv-lib method
     const getAllForAddressABI = [{"constant": true,"inputs": [{ "name": "delAddress", "type": "address" }],"name": "getAllDelegatedToAddr","outputs": [{ "name": "pubKeys", "type": "bytes32[]" }],"payable": false,"stateMutability": "view","type": "function"}]
     const delegationCheck = new web3.eth.Contract(getAllForAddressABI, unsafeEd25519DelegationAddr);
@@ -150,12 +134,13 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     }
 
     // Get bbFarmAddress from namespace
-    const getBBFarmABI = [{ "constant": true, "inputs": [{ "name": "bbFarmId", "type": "uint8" }], "name": "getBBFarm", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }]
-    const indexAddress = '0xcad76eE606FB794dD1DA2c7E3C8663F648ba431d'; // TODO - svNetwork in sv-lib will make this redundant
-    const indexContract = new web3.eth.Contract(getBBFarmABI, indexAddress)
+    // const getBBFarmABI = [{ "constant": true, "inputs": [{ "name": "bbFarmId", "type": "uint8" }], "name": "getBBFarm", "outputs": [{ "name": "", "type": "address" }], "payable": false, "stateMutability": "view", "type": "function" }]
+    // const indexAddress = '0xcad76eE606FB794dD1DA2c7E3C8663F648ba431d'; // TODO - svNetwork in sv-lib will make this redundant
+    // const indexContract = new web3.eth.Contract(getBBFarmABI, indexAddress)
     const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8);
     console.log('bbFarmNamespace :', bbFarmNamespace);
-    const bbFarmAddress = await indexContract.methods.getBBFarm(`0x${bbFarmNamespace}`).call()
+    // const bbFarmAddress = await indexContract.methods.getBBFarm(`0x${bbFarmNamespace}`).call()
+    const bbFarmAddress = await index.methods.getBBFarm(`0x${bbFarmNamespace}`).call()
     console.log('bbFarmAddress :', bbFarmAddress);
 
     // Get the voting network
@@ -219,6 +204,7 @@ const Ed25519DelegationReqRT = t.type({
     signature: Bytes64RT,
     publickey: t.string,
     packed: Bytes32RT,
+    networkName: t.string,
     subgroupVersion: t.Integer
 })
 type Ed25519DelegationReq = t.TypeOf<typeof Ed25519DelegationReqRT>
@@ -227,15 +213,16 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     // Testing variables - These will live seperately in the future
     const testingPrivateKey = '0x6c992d3a3738114b53a06c57499b4710257c6f4cac531bdbb06afb54334d248d';
     const testingAddress = '0x1233832f5Ba901205474A0b2F407da6666aBfb08';
-    const networkName:string = 'testnet'
+    // Unpack what we need - TODO update this so it is based on a networkName
+    const { signature, publickey, packed, networkName } = event
 
     const network = networkName === 'mainnet'
         ? { networkId: 1, chainId: 1 }
         : { networkId: 42, chainId: 42 }
+    console.log('network :', network);
     const netConf = getNetwork(network.networkId, network.chainId)
 
-    // Unpack what we need - TODO update this so it is based on a networkName
-    const { signature, publickey, packed } = event
+
 
     const isValidPublicKey = StellarBase.StrKey.isValidEd25519PublicKey(publickey)
     if (!isValidPublicKey) {
@@ -259,7 +246,7 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     console.log(`packed: ${packed}, hexPubKey: ${hexPubKey}, sig1: ${sig1}, sig2: ${sig2}`);
 
     // Use the API snippet to generate the function bytecode
-    const { httpProvider, unsafeEd25519DelegationAddr } = netConf;
+    const { httpProvider, unsafeEd25519DelegationAddr, etherscanLink, name } = netConf;
     const addUntrustedSelfDelegationABI = [{ constant: false, inputs: [{ name: 'dlgtRequest', type: 'bytes32' }, { name: 'pubKey', type: 'bytes32' }, { name: 'signature', type: 'bytes32[2]' }], name: 'addUntrustedSelfDelegation', outputs: [], payable: false, stateMutability: 'nonpayable', type: 'function' }];
     // const inputByteCode = EthAbi.encodeMethod(addUntrustedSelfDelegationABI[0], [packed, hexPubKey, [sig1, sig2]]) // This was the method used when using Ethjs - keeping until web3 version is working
 
@@ -267,12 +254,20 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     const delegationContract = new web3.eth.Contract(addUntrustedSelfDelegationABI, unsafeEd25519DelegationAddr)
     const addUntrustedSelfDelegation = delegationContract.methods.addUntrustedSelfDelegation(packed, hexPubKey, [sig1, sig2])
 
-    const tx = prepareTransaction(addUntrustedSelfDelegation, unsafeEd25519DelegationAddr)
+    // const tx = prepareTransaction(addUntrustedSelfDelegation, unsafeEd25519DelegationAddr)
+    const gasEstimate = await addUntrustedSelfDelegation.estimateGas();
+    if (gasEstimate instanceof Error) {
+        return errResp('Unable to estimate gas, this means the transaction will fail')
+    }
+
+    const tx = { to: unsafeEd25519DelegationAddr, gas: gasEstimate, data: addUntrustedSelfDelegation.encodeABI() };
     console.log('tx :', tx);
 
-
+    const nonceTableName = `${name}_${testingAddress}`
+    console.log('nonceTableName :', nonceTableName);
     const dynamoDb = new doc.DynamoDB();
-    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, '0x1233832f5Ba901205474A0b2F407da6666aBfb08', 'Kovan_0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    const txWithNonce = await determineAndReserveNonce(web3, dynamoDb, tx, testingAddress, nonceTableName);
+    console.log('txWithNonce :', txWithNonce);
 
     // Sign and send TX
     const signedTx: any = await web3.eth.accounts.signTransaction(txWithNonce, testingPrivateKey);
@@ -284,9 +279,10 @@ const submitEd25519DelegationInner = async (event: Ed25519DelegationReq, context
     const txId = await eth.sendRawTransaction(rawTransaction);
     console.log('txId :', txId);
 
-    await updateNonceTxHash(dynamoDb, tx, signedTx, txId, testingAddress, 'Kovan_0x1233832f5Ba901205474A0b2F407da6666aBfb08');
+    await updateNonceTxHash(dynamoDb, tx, signedTx, txId, testingAddress, nonceTableName);
+    const txLink = `${etherscanLink}tx/${txId}`;
 
-    return resp200({ txid: txId, from: publickey, to: packed, ...network });
+    return resp200({ txId, txLink, from: publickey, to: packed, ...network });
 }
 export const submitEd25519Delegation: Handler = mkAsyncH(submitEd25519DelegationInner, Ed25519DelegationReqRT)
 
@@ -321,7 +317,7 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
         ? { networkId: 1, chainId: 1 }
         : { networkId: 42, chainId: 42 }
     const netConf = getNetwork(network.networkId, network.chainId)
-    const { httpProvider, archivePushUrl } = netConf;
+    const { httpProvider, archivePushUrl, etherscanLink } = netConf;
 
     // Deploy the ballotspec to IPFS and S3 backup
     const ballotHash = await deployBallotSpec(archivePushUrl, ballotSpec);
@@ -384,9 +380,10 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     // // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
     const eth = new Eth(new Eth.HttpProvider(httpProvider));
     const txId = await eth.sendRawTransaction(rawTransaction);
+    const txLink = `${etherscanLink}tx/${txId}`
 
     await updateNonceTxHash(dynamoDb, txWithNonce, signedTx, txId, testingAddress, nonceTrackerDB);
 
-    return resp200({ txId, ...network });
+    return resp200({ txId, txLink, ...network });
 };
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
