@@ -142,7 +142,7 @@ const submitProxyVoteInner = async (event: ProxyVoteInput, context) => {
     console.log('bbFarmAddress :', bbFarmAddress);
 
     // Get the voting network details
-    const getVotingNetABI = getSingularCleanAbi('BBFarmAbi', 'getVotingNetworkDetails'); // TODO once delegation abi is in this sv-lib method
+    const getVotingNetABI = getSingularCleanAbi('BBFarmAbi', 'getVotingNetworkDetails');
     const bbFarmContract = new web3.eth.Contract(getVotingNetABI, bbFarmAddress);
     const networkDetails = await bbFarmContract.methods.getVotingNetworkDetails().call();
 
@@ -306,18 +306,19 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     }
 
     // Setup the network variables we need for testnet vs mainnet
-    // This is hard coded at the moment, we will use the test net for anything that isn't declared as mainnet
+    // This is hard coded at the moment, we will use the kovan test net for anything that isn't declared as mainnet
     const network = networkName === 'mainnet'
         ? { networkId: 1, chainId: 1 }
         : { networkId: 42, chainId: 42 }
     const netConf = getNetwork(network.networkId, network.chainId)
     const { httpProvider, archivePushUrl, etherscanLink } = netConf;
+    const svNetwork = await initializeSvLight(netConf, {useWebsockets: false});
+    const { web3, index } = svNetwork;
+    clearInterval(svNetwork.events.getBlockPeriodic);
 
     // Deploy the ballotspec to IPFS and S3 backup
     const ballotHash = await deployBallotSpec(archivePushUrl, ballotSpec);
     console.log('ballotHash :', ballotHash);
-
-    const { web3, index } = await initializeSvLight(netConf)
 
     // Prepare deploy ballot function arguments
     const { USE_ETH, USE_SIGNED, USE_NO_ENC, USE_ENC, IS_BINDING, IS_OFFICIAL, USE_TESTING } = flags;
@@ -326,7 +327,7 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     console.log(`Submission bits: ${submissionBits}. Start time: ${startTime}. End time: ${endTime}.... Packed ${packed}`);
 
     // Using the first byte of extra data to use this BB farm ID
-    // TODO - Do this based on api call inputs?
+    // TODO - Base this off request inputs?
     const extraData = '0x01'
 
     // Set up the method and encode the tx data
@@ -355,15 +356,6 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     const { rawTransaction } = signedTx;
     console.log('rawTransaction :', rawTransaction);
 
-    // return await web3.eth.sendSignedTransaction(rawTransaction)
-    //     .then(r => {
-    //         console.log('Sending signed transaction was successful. Response:', r)
-    //         return resp200(r.transactionHash)
-    //     })
-    //     // .once('transactionHash', hash => { return resp200(hash) })
-    //     // .on('error', e => { return errResp(e) })
-    //     .catch(e => { return errResp(e) });
-
     // // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
     const eth = new Eth(new Eth.HttpProvider(httpProvider));
     const txId = await eth.sendRawTransaction(rawTransaction);
@@ -374,3 +366,97 @@ const submitProxyProposalInner = async (event: ProxyProposalInput, context) => {
     return resp200({ txId, txLink, ...network });
 };
 export const submitProxyProposal: Handler = mkAsyncH(submitProxyProposalInner, ProxyProposalInputRT)
+
+
+
+
+
+const submitSignedProxyVote = async (event: ProxyVoteInput, context) => {
+    const proxyAddr = process.env.ENV_PROXY_ADDR;
+    const proxySecretKey = process.env.ENV_PROXY_SK;
+
+    // Destructure the variables that we need from the request
+    const { extra, proxyReq, ballotId, netConf } = event
+    console.log('proxyReq :', typeof proxyReq, proxyReq);
+    console.log('extra :', extra);
+
+    // Verify the signed ballot
+    const { verified, address } = verifySignedBallotForProxy(event)
+    if (!verified) { return errResp('Signed ballot cannot be verified') }
+
+    // Initialise svNetwork, destructure what we need and clear the regular interval (which causes function to timeout)
+    const svNetwork = await initializeSvLight(netConf, {useWebsockets: false})
+    const { web3, index } = svNetwork
+    clearInterval(svNetwork.events.getBlockPeriodic);
+
+    // Initialise web3 and check for delegations
+    const getAllForAddressABI = getSingularCleanAbi('UnsafeEd25519DelegationAbi', 'getAllDelegatedToAddr');
+    const { unsafeEd25519DelegationAddr } = netConf;
+    const delegationCheck = new web3.eth.Contract(getAllForAddressABI, unsafeEd25519DelegationAddr);
+    const delegations = await delegationCheck.methods.getAllDelegatedToAddr(address).call()
+
+    // If no delegations exist, return error response
+    const delegationsExist = delegations.length > 0;
+    if (!delegationsExist) {
+        return errResp(`No delegations exist for this address :${address}`);
+    }
+
+    // Get bbFarmAddress from namespace
+    const bbFarmNamespace = cleanEthHex(ballotId).slice(0, 8);
+    console.log('bbFarmNamespace :', bbFarmNamespace);
+    const bbFarmAddress = await index.methods.getBBFarm(`0x${bbFarmNamespace}`).call()
+    console.log('bbFarmAddress :', bbFarmAddress);
+
+    // Get the voting network details
+    const getVotingNetABI = getSingularCleanAbi('BBFarmAbi', 'getVotingNetworkDetails');
+    const bbFarmContract = new web3.eth.Contract(getVotingNetABI, bbFarmAddress);
+    const networkDetails = await bbFarmContract.methods.getVotingNetworkDetails().call();
+
+    // Explode them
+    const { chainId, networkId, remoteBBFarmAddress } = explodeForeignNetDetails(networkDetails)
+
+    // Initialise the remote web3 instance based on the foreign network details
+    const remoteNetConf = getNetwork(chainId, networkId);
+    const remoteHttpProvider = remoteNetConf.httpProvider
+    const remoteNetworkName = remoteNetConf.name
+    const remoteWeb3 = new Web3(remoteHttpProvider)
+
+    // Set up the contract and method with args to submit the proxy vote
+    const submitProxyVoteABI = getSingularCleanAbi('BBFarmAbi', 'submitProxyVote');
+    const remoteBBFarmContract = new remoteWeb3.eth.Contract(submitProxyVoteABI, remoteBBFarmAddress);
+    const submitProxyVote = remoteBBFarmContract.methods.submitProxyVote(proxyReq, extra);
+
+    // Estimate gas
+    const gasEstimate = await submitProxyVote.estimateGas()
+    if (gasEstimate instanceof Error) {
+        return errResp('Unable to estimate gas, this means the transaction will fail')
+    }
+
+    // Create the transaction object
+    const txWithoutNonce = { to: remoteBBFarmAddress, gas: gasEstimate, data: submitProxyVote.encodeABI() };
+    console.log('tx :', txWithoutNonce);
+
+    // Check the nonce to use and reserve it
+    const dynamoDb = new doc.DynamoDB();
+    const nonceTrackerDB = `${remoteNetworkName}_${proxyAddr}`;
+    const txWithNonce = await determineAndReserveNonce(remoteWeb3, dynamoDb, txWithoutNonce, proxyAddr, nonceTrackerDB);
+    console.log('txWithNonce :', txWithNonce);
+
+    // Sign the transaction
+    const signedTx: any = await remoteWeb3.eth.accounts.signTransaction(txWithNonce, proxySecretKey);
+    console.log('signedTx :', signedTx);
+    const { rawTransaction } = signedTx;
+
+    // Send raw transaction with Eth-js (Ethjs is being used in favor of web3 here due to ethjs async call being resolved as soon as txId is returned)
+    const eth = new Eth(new Eth.HttpProvider(remoteHttpProvider));
+    const txId = await eth.sendRawTransaction(rawTransaction);
+    const txLink = `${remoteNetConf.etherscanLink}tx/${txId}`;
+    console.log('txId :', txId);
+
+    // Update the nonce DB with the txId and transaction information
+    await updateNonceTxHash(dynamoDb, txWithoutNonce, signedTx, txId, proxyAddr, nonceTrackerDB);
+
+    // Return the txId, etherscan link and network + chain id of the network
+    return resp200({txId, txLink, networkId, chainId})
+}
+export const submitSignedVote: Handler = mkAsyncH(submitSignedProxyVote, ProxyVoteInputRT)

@@ -14,8 +14,8 @@ provider:
   region: ap-southeast-2
   stage: ${opt:stage, 'dev'}
   environment:
-    ENV_PROXY_ADDR: ${file(./env-vars.json):proxyPublicAddress}
-    ENV_PROXY_SK: ${file(./env-vars.json):proxySecretKey}
+    ENV_PROXY_ADDR: ${file(./env-vars.${self:provider.stage}.json):proxyPublicAddress}
+    ENV_PROXY_SK: ${file(./env-vars.${self:provider.stage}.json):proxySecretKey}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -75,6 +75,25 @@ functions:
             summary: Publish a signed vote
             requestBody:
               description: Submit a signed and packed vote for an arbitrary actor to submit to the chain on your behalf
+            requestModels:
+              "application/json": ProxyVoteInput
+            methodResponses:
+              - statusCode: 200
+                responseModels:
+                  "application/json": SubmitProxyVoteResp
+              - ${self:custom.doc.ErrResp}
+  submitSignedVote:
+    handler: sv/light/handlers.submitSignedVote
+    timeout: 30
+    events:
+      - http:
+          method: post
+          path: /sv/light/submitSignedVote
+          cors: true
+          documentation:
+            summary: Publish a signed vote
+            requestBody:
+              description: Submit a signed and packed vote without publishing a transaction
             requestModels:
               "application/json": ProxyVoteInput
             methodResponses:

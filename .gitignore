@@ -16,4 +16,4 @@ swagger-docs.json
 pkg-docker
 
 #environment variables
-env-vars.json
+env-vars*
