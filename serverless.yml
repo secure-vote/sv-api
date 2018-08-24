@@ -99,7 +99,7 @@ functions:
             methodResponses:
               - statusCode: 200
                 responseModels:
-                  "application/json": SubmitProxyVoteResp
+                  "application/json": SubmitSignedVoteResp
               - ${self:custom.doc.ErrResp}
   submitProxyProposal:
     handler: sv/light/handlers.submitProxyProposal

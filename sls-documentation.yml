@@ -127,6 +127,16 @@ documentation:
           address:
             $ref: '{{model: EthAddress}}'
 
+    - name: SubmitSignedVoteResp
+      contentType: application/json
+      schema:
+        type: object
+        properties:
+          txid:
+            $ref: '{{model: HexString}}'
+          address:
+            $ref: '{{model: EthAddress}}'
+
     - name: Ed25519DelegationReq
       description: An object composed of the ed25519 delegation and metadata about which democracy and subgroup it is for.
       contentType: application/json

@@ -9,16 +9,20 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "docs": "sls downloadDocumentation --outputFileName=swagger-docs.json && ./convDocSpec.js && spectacle -t docs swagger-docs.json # bootprint openapi ./swagger-docs.json docs",
-    "deploy": "npm run pkg-docker && npm run pkg-deploy && npm run docs",
+    "deploy-f": "npm run pkg-docker && npm run pkg-deploy -- -f",
+    "deploy": "npm run deploy-no-docs && npm run docs",
     "deploy-no-docs": "npm run pkg-docker && npm run pkg-deploy",
     "pkg-deploy": "sls deploy --package pkg-docker",
-    "pkg-docker": "time docker run --cpus=2 -v $(pwd):/lambda -it lambci/lambda:build-nodejs8.10 /lambda/docker-build.sh"
+    "pkg-docker": "time docker run --rm --cpus=4 -v $(pwd):/lambda -it lambci/lambda:build-nodejs8.10 /lambda/docker-build.sh",
+    "docker-run": "docker run --rm --cpus=4 -v \"$PWD\":/var/task -it lambci/lambda:nodejs8.10",
+    "kill-docker": "for id in \"$(docker ps | grep lambci | cut -d ' ' -f 1 )\"; do echo \"killing $id\"; docker kill \"$id\"; done"
   },
   "dependencies": {
     "axios": "^0.18.0",
     "bn.js": "^4.11.8",
     "btoa": "^1.2.1",
     "dynamodb-doc": "^1.0.0",
+    "ethereumjs-util": "^5.2.0",
     "ethers": "^3.0.26",
     "ethjs": "^0.4.0",
     "ethjs-signer": "^0.1.1",

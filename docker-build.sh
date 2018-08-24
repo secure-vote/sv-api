@@ -10,7 +10,10 @@ load_docker_node_modules () {
     currdir=$(pwd)
     cd /lambda
     if [ -f node_modules.docker.tar ]; then
-        tar xf node_modules.docker.tar -C /build/node_modules
+        echo "Found node_modules backup"
+        tar xf node_modules.docker.tar -C /build/
+    else
+        echo "No node_modules backup; will rebuild from scratch"
     fi
     cd "$currdir"
     echo "DONE INIT DOCKER NODE_MODULES"
@@ -19,7 +22,7 @@ load_docker_node_modules () {
 save_docker_node_modules () {
     echo "SAVING DOCKER NODE_MODULES"
     cd /lambda
-    tar cf node_modules.docker.tar /build/node_modules
+    tar cf node_modules.docker.tar node_modules
     echo "DONE SAVING DOCKER NODE_MODULES"
 }
 
