@@ -43,6 +43,7 @@
     "@types/node": "^8.10.22",
     "@types/ramda": "^0.25.35",
     "babel-runtime": "^6.26.0",
+    "express": "^4.16.3",
     "json-schema-to-openapi-schema": "^0.2.0",
     "serverless": "^1.29.1",
     "serverless-aws-documentation": "^1.1.0",
