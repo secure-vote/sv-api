@@ -1,0 +1,4 @@
+node_modules
+pkg-docker
+.git
+node_modules.docker.tar
